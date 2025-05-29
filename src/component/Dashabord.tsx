@@ -114,7 +114,49 @@ const ClaimApiDashboard: React.FC = () => {
         errorRate: 2.80,
         successRate: 97.20,
         deploymentType: 'CloudHub 2.0'
+      },
+      {
+        id: 9,
+        name: 'claim-audit-api',
+        type: 'API',
+        requestVolume: 6543,
+        responseTime: '145.20ms',
+        errorRate: 1.25,
+        successRate: 98.75,
+        deploymentType: 'CloudHub 2.0'
+      },
+      {
+        id: 10,
+        name: 'claim-reporting-api',
+        type: 'Application',
+        requestVolume: 5432,
+        responseTime: '178.90ms',
+        errorRate: 2.45,
+        successRate: 97.55,
+        deploymentType: 'CloudHub 2.0'
+      },
+      {
+        id: 11,
+        name: 'claim-analytics-api',
+        type: 'API',
+        requestVolume: 4321,
+        responseTime: '234.50ms',
+        errorRate: 3.75,
+        successRate: 96.25,
+        deploymentType: 'CloudHub 2.0'
+      },
+      {
+        id: 12,
+        name: 'claim-workflow-api',
+        type: 'Application',
+        requestVolume: 3456,
+        responseTime: '167.80ms',
+        errorRate: 1.95,
+        successRate: 98.05,
+        deploymentType: 'CloudHub 2.0'
       }
+      
+      
     ],
     QA: [
       {
@@ -145,6 +187,46 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '189.60ms',
         errorRate: 3.15,
         successRate: 96.85,
+        deploymentType: 'CloudHub 2.0'
+      },
+      {
+        id: 4,
+        name: 'claim-notification-api',
+        type: 'Application',
+        requestVolume: 432,
+        responseTime: '298.40ms',
+        errorRate: 6.25,
+        successRate: 93.75,
+        deploymentType: 'CloudHub 2.0'
+      },
+      {
+        id: 5,
+        name: 'claim-documents-api',
+        type: 'API',
+        requestVolume: 321,
+        responseTime: '187.30ms',
+        errorRate: 4.85,
+        successRate: 95.15,
+        deploymentType: 'CloudHub 2.0'
+      },
+      {
+        id: 6,
+        name: 'claim-payment-api',
+        type: 'Application',
+        requestVolume: 287,
+        responseTime: '412.60ms',
+        errorRate: 8.95,
+        successRate: 91.05,
+        deploymentType: 'CloudHub 2.0'
+      },
+      {
+        id: 7,
+        name: 'claim-audit-api',
+        type: 'API',
+        requestVolume: 198,
+        responseTime: '156.70ms',
+        errorRate: 3.45,
+        successRate: 96.55,
         deploymentType: 'CloudHub 2.0'
       }
     ]
