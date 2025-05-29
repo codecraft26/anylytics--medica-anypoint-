@@ -567,7 +567,7 @@ const ClaimApiDashboard: React.FC = () => {
                     Error Rate
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Success Rate
+                    Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Deployment Type
@@ -604,13 +604,19 @@ const ClaimApiDashboard: React.FC = () => {
                       {api.responseTime}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`font-medium ${getErrorRateColor(api.errorRate)}`}>
+                      <span className={`font-medium ${
+                        api.errorRate > 10 ? 'text-red-600' : 
+                        api.errorRate > 5 ? 'text-yellow-600' : 
+                        'text-green-600'
+                      }`}>
                         {api.errorRate.toFixed(2)}%
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`font-medium ${getSuccessRateColor(api.successRate)}`}>
-                        {api.successRate.toFixed(2)}%
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        api.errorRate > 10 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                      }`}>
+                        {api.errorRate > 10 ? 'Not Running' : 'Running'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
