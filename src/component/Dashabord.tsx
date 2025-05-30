@@ -300,17 +300,17 @@ const ClaimApiDashboard: React.FC = () => {
     setSearchQuery(e.target.value);
   };
 
-  const getErrorRateColor = (errorRate: number): string => {
-    if (errorRate < 2) return 'text-green-600';
-    if (errorRate < 5) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+  // const getErrorRateColor = (errorRate: number): string => {
+  //   if (errorRate < 2) return 'text-green-600';
+  //   if (errorRate < 5) return 'text-yellow-600';
+  //   return 'text-red-600';
+  // };
 
-  const getSuccessRateColor = (successRate: number): string => {
-    if (successRate >= 98) return 'text-green-600';
-    if (successRate >= 95) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+  // const getSuccessRateColor = (successRate: number): string => {
+  //   if (successRate >= 98) return 'text-green-600';
+  //   if (successRate >= 95) return 'text-yellow-600';
+  //   return 'text-red-600';
+  // };
 
   // API Details Page Component
   const ApiDetailsPage = () => {
