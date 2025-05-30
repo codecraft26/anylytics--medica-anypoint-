@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
-import { ChevronDown, Activity, AlertCircle, CheckCircle, Clock, Server, ArrowLeft, RotateCcw, Search } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { ChevronDown, Activity, AlertCircle, CheckCircle, Clock, Server, ArrowLeft, RotateCcw, Search, TrendingUp, TrendingDown, Zap } from 'lucide-react';
 
 // TypeScript interfaces
 interface ApiData {
@@ -31,11 +31,11 @@ const ClaimApiDashboard: React.FC = () => {
   const [autoRefresh, setAutoRefresh] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [isMounted, setIsMounted] = useState<boolean>(false);
-  // Add search state
+  // Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchInput, setSearchInput] = useState<string>('');
 
-  // Sample API data based on the image
-  // Sample API data based on the image
+  // Sample API data
   const apiData: ApiDataByEnv = {
     PROD: [
       {
@@ -158,8 +158,6 @@ const ClaimApiDashboard: React.FC = () => {
         successRate: 98.05,
         deploymentType: 'CloudHub 2.0'
       }
-      
-      
     ],
     QA: [
       {
@@ -236,7 +234,7 @@ const ClaimApiDashboard: React.FC = () => {
   };
 
   // Filter APIs based on comma-separated search query
-  const filterApis = (apis: ApiData[], query: string): ApiData[] => {
+  const filterApis = useCallback((apis: ApiData[], query: string): ApiData[] => {
     if (!query.trim()) return apis;
     
     const searchTerms = query.toLowerCase().split(',').map(term => term.trim()).filter(term => term);
@@ -246,18 +244,27 @@ const ClaimApiDashboard: React.FC = () => {
     return apis.filter(api => 
       searchTerms.some(term => api.name.toLowerCase().includes(term))
     );
-  };
+  }, []);
 
-  const currentData: ApiData[] = apiData[selectedEnv];
-  const filteredData: ApiData[] = filterApis(currentData, searchQuery);
+  const currentData: ApiData[] = useMemo(() => apiData[selectedEnv], [selectedEnv]);
+  const filteredData: ApiData[] = useMemo(() => filterApis(currentData, searchQuery), [currentData, searchQuery, filterApis]);
   
   // Calculate overall metrics based on filtered data
-  const totalRequests: number = filteredData.reduce((sum: number, api: ApiData) => sum + api.requestVolume, 0);
-  const totalEntities: number = filteredData.length;
-  const entitiesWithErrors: number = filteredData.filter((api: ApiData) => api.errorRate > 0).length;
-  const overallErrorRate: number = filteredData.length > 0 
-    ? filteredData.reduce((sum: number, api: ApiData) => sum + (api.errorRate * api.requestVolume), 0) / totalRequests 
-    : 0;
+  const { totalRequests, totalEntities, entitiesWithErrors, overallErrorRate } = useMemo(() => {
+    const total = filteredData.reduce((sum: number, api: ApiData) => sum + api.requestVolume, 0);
+    const entities = filteredData.length;
+    const withErrors = filteredData.filter((api: ApiData) => api.errorRate > 0).length;
+    const errorRate = entities > 0 
+      ? filteredData.reduce((sum: number, api: ApiData) => sum + (api.errorRate * api.requestVolume), 0) / total 
+      : 0;
+    
+    return {
+      totalRequests: total,
+      totalEntities: entities,
+      entitiesWithErrors: withErrors,
+      overallErrorRate: errorRate
+    };
+  }, [filteredData]);
 
   // Initialize time after component mounts to avoid hydration mismatch
   useEffect(() => {
@@ -273,7 +280,7 @@ const ClaimApiDashboard: React.FC = () => {
       interval = setInterval(() => {
         setLastUpdated(new Date().toLocaleTimeString());
         // Here you would typically fetch fresh data from your API
-      }, 60000); // Refresh every 30 seconds
+      }, 60000); // Refresh every 60 seconds
     }
 
     return () => {
@@ -281,36 +288,39 @@ const ClaimApiDashboard: React.FC = () => {
     };
   }, [autoRefresh]);
 
-  const handleApiClick = (api: ApiData): void => {
+  const handleApiClick = useCallback((api: ApiData): void => {
     setSelectedApi(api);
     setViewMode('details');
-  };
+  }, []);
 
-  const handleBackToDashboard = (): void => {
+  const handleBackToDashboard = useCallback((): void => {
     setSelectedApi(null);
     setViewMode('dashboard');
-  };
+  }, []);
 
-  const handleManualRefresh = (): void => {
+  const handleManualRefresh = useCallback((): void => {
     setLastUpdated(new Date().toLocaleTimeString());
     // Here you would typically fetch fresh data from your API
-  };
+  }, []);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setSearchQuery(e.target.value);
-  };
+  const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
+    setSearchInput(e.target.value);
+  }, []);
 
-  // const getErrorRateColor = (errorRate: number): string => {
-  //   if (errorRate < 2) return 'text-green-600';
-  //   if (errorRate < 5) return 'text-yellow-600';
-  //   return 'text-red-600';
-  // };
+  const handleSearch = useCallback((): void => {
+    setSearchQuery(searchInput);
+  }, [searchInput]);
 
-  // const getSuccessRateColor = (successRate: number): string => {
-  //   if (successRate >= 98) return 'text-green-600';
-  //   if (successRate >= 95) return 'text-yellow-600';
-  //   return 'text-red-600';
-  // };
+  const handleClearSearch = useCallback((): void => {
+    setSearchInput('');
+    setSearchQuery('');
+  }, []);
+
+  const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  }, [handleSearch]);
 
   // API Details Page Component
   const ApiDetailsPage = () => {
@@ -342,8 +352,151 @@ const ClaimApiDashboard: React.FC = () => {
           </div>
         </nav>
 
-        {/* Rest of API details component remains unchanged */}
-        {/* ... */}
+        {/* API Details Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* API Overview */}
+          <div className="bg-white shadow rounded-lg mb-8">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">API Overview</h3>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">API Name</p>
+                  <p className="mt-1 text-lg font-semibold text-gray-900">{selectedApi.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Type</p>
+                  <span className={`mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${
+                    selectedApi.type === 'Application' 
+                      ? 'bg-blue-100 text-blue-800' 
+                      : 'bg-green-100 text-green-800'
+                  }`}>
+                    {selectedApi.type}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Deployment Type</p>
+                  <p className="mt-1 text-lg font-semibold text-gray-900">{selectedApi.deploymentType}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Performance Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <Activity className="h-8 w-8 text-blue-600 mb-2" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">Request Volume</p>
+              <p className="text-3xl font-bold text-gray-900">{selectedApi.requestVolume.toLocaleString()}</p>
+              <div className="flex items-center mt-2 text-sm">
+                <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+                <span className="text-green-600">+12% from last hour</span>
+              </div>
+            </div>
+            
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <Clock className="h-8 w-8 text-yellow-600 mb-2" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">Response Time</p>
+              <p className="text-3xl font-bold text-gray-900">{selectedApi.responseTime}</p>
+              <div className="flex items-center mt-2 text-sm">
+                <TrendingDown className="h-4 w-4 text-green-500 mr-1" />
+                <span className="text-green-600">-5ms from avg</span>
+              </div>
+            </div>
+            
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <AlertCircle className="h-8 w-8 text-red-600 mb-2" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">Error Rate</p>
+              <p className={`text-3xl font-bold ${
+                selectedApi.errorRate > 10 ? 'text-red-600' : 
+                selectedApi.errorRate > 5 ? 'text-yellow-600' : 
+                'text-green-600'
+              }`}>
+                {selectedApi.errorRate.toFixed(2)}%
+              </p>
+              <div className="flex items-center mt-2 text-sm">
+                <TrendingDown className="h-4 w-4 text-green-500 mr-1" />
+                <span className="text-green-600">-0.5% from yesterday</span>
+              </div>
+            </div>
+            
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <CheckCircle className="h-8 w-8 text-green-600 mb-2" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">Success Rate</p>
+              <p className="text-3xl font-bold text-green-600">{selectedApi.successRate.toFixed(2)}%</p>
+              <div className="flex items-center mt-2 text-sm">
+                <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+                <span className="text-green-600">+0.5% from yesterday</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Health Status */}
+          <div className="bg-white shadow rounded-lg mb-8">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Health Status</h3>
+            </div>
+            <div className="p-6">
+              <div className="flex items-center">
+                <div className={`flex-shrink-0 h-4 w-4 rounded-full mr-3 ${
+                  selectedApi.errorRate > 10 ? 'bg-red-500' : 'bg-green-500'
+                }`}></div>
+                <span className={`text-lg font-medium ${
+                  selectedApi.errorRate > 10 ? 'text-red-600' : 'text-green-600'
+                }`}>
+                  {selectedApi.errorRate > 10 ? 'Unhealthy' : 'Healthy'}
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-gray-600">
+                {selectedApi.errorRate > 10 
+                  ? 'API is experiencing high error rates. Immediate attention required.'
+                  : 'API is performing within normal parameters.'
+                }
+              </p>
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 h-2 w-2 bg-green-500 rounded-full mr-3"></div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-900">API deployment successful</p>
+                    <p className="text-xs text-gray-500">2 hours ago</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 h-2 w-2 bg-yellow-500 rounded-full mr-3"></div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-900">Performance monitoring alert resolved</p>
+                    <p className="text-xs text-gray-500">4 hours ago</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 h-2 w-2 bg-blue-500 rounded-full mr-3"></div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-900">Configuration update applied</p>
+                    <p className="text-xs text-gray-500">6 hours ago</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
@@ -357,7 +510,7 @@ const ClaimApiDashboard: React.FC = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Activity className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-semibold text-gray-900">API Monitoring DashBoard</h1>
+              <h1 className="text-xl font-semibold text-gray-900">API Monitoring Dashboard</h1>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -441,31 +594,42 @@ const ClaimApiDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Add Search Bar */}
+        {/* Search Bar with Button */}
         <div className="mb-6">
-          <div className="relative">
-            <div className="absolute inset-y-0 start-0 flex items-center pl-3 pointer-events-none">
-              <Search className="w-5 h-5 text-gray-500" />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 start-0 flex items-center pl-3 pointer-events-none">
+                <Search className="w-5 h-5 text-gray-500" />
+              </div>
+              <input
+                key="search-input"
+                type="text"
+                value={searchInput}
+                onChange={handleSearchInputChange}
+                onKeyPress={handleKeyPress}
+                placeholder="Search APIs by name (use commas for multiple APIs e.g. claim-processing, claim-validation)"
+                className="block w-full p-3 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500"
+                autoComplete="off"
+              />
             </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              placeholder="Search APIs by name (use commas for multiple APIs e.g. claim-processing, claim-validation)"
-              className="block w-full p-3 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500"
-            />
+            <button
+              onClick={handleSearch}
+              className="px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+            >
+              Search
+            </button>
+            {(searchQuery || searchInput) && (
+              <button
+                onClick={handleClearSearch}
+                className="px-4 py-3 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
+              >
+                Clear
+              </button>
+            )}
           </div>
           {searchQuery && (
             <div className="mt-2 text-sm text-gray-600">
               <span className="font-medium">Showing {filteredData.length} of {currentData.length} APIs</span>
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery('')}
-                  className="ml-2 text-blue-600 hover:text-blue-800"
-                >
-                  Clear search
-                </button>
-              )}
             </div>
           )}
         </div>
@@ -512,7 +676,7 @@ const ClaimApiDashboard: React.FC = () => {
         <div className="bg-white shadow rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 className="text-lg font-medium text-gray-900">APIs List</h3>
-            {filteredData.length === 0 && (
+            {filteredData.length === 0 && searchQuery && (
               <span className="text-sm text-gray-500">No APIs match your search criteria</span>
             )}
           </div>
@@ -526,7 +690,7 @@ const ClaimApiDashboard: React.FC = () => {
                       API Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      Type
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Request Volume
@@ -537,7 +701,9 @@ const ClaimApiDashboard: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Error Rate
                     </th>
-                  
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Deployment Type
                     </th>
@@ -597,7 +763,11 @@ const ClaimApiDashboard: React.FC = () => {
               </table>
             ) : (
               <div className="p-6 text-center text-gray-500">
-                <p>No APIs match your search criteria. Try adjusting your search.</p>
+                {searchQuery ? (
+                  <p>No APIs match your search criteria. Try adjusting your search.</p>
+                ) : (
+                  <p>No APIs available for the selected environment.</p>
+                )}
               </div>
             )}
           </div>
