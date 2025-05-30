@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronDown, Activity, AlertCircle, CheckCircle, Clock, Server, ArrowLeft, RotateCcw, Search, TrendingUp, TrendingDown } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { ChevronDown, Activity, AlertCircle, CheckCircle, Clock, Server, ArrowLeft, RotateCcw, Search } from 'lucide-react';
 
 // TypeScript interfaces
 interface ApiData {
@@ -13,6 +13,7 @@ interface ApiData {
   errorRate: number;
   successRate: number;
   deploymentType: string;
+  version: string;
 }
 
 interface ApiDataByEnv {
@@ -31,9 +32,8 @@ const ClaimApiDashboard: React.FC = () => {
   const [autoRefresh, setAutoRefresh] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [isMounted, setIsMounted] = useState<boolean>(false);
-  // Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [searchInput, setSearchInput] = useState<string>('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Sample API data
   const apiData: ApiDataByEnv = {
@@ -46,7 +46,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '189.30ms',
         errorRate: 2.15,
         successRate: 97.85,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '4.6.9 Java 17'
       },
       {
         id: 2,
@@ -56,7 +57,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '245.60ms',
         errorRate: 5.20,
         successRate: 94.80,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '3.2.1 Java 11'
       },
       {
         id: 3,
@@ -66,7 +68,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '156.40ms',
         errorRate: 1.85,
         successRate: 98.15,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '5.1.2 Java 17'
       },
       {
         id: 4,
@@ -76,7 +79,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '312.80ms',
         errorRate: 8.70,
         successRate: 91.30,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '2.8.4 Java 11'
       },
       {
         id: 5,
@@ -86,7 +90,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '198.20ms',
         errorRate: 3.45,
         successRate: 96.55,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '4.1.7 Java 17'
       },
       {
         id: 6,
@@ -96,7 +101,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '425.10ms',
         errorRate: 12.30,
         successRate: 87.70,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '3.5.6 Java 11'
       },
       {
         id: 7,
@@ -106,7 +112,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '167.90ms',
         errorRate: 0.95,
         successRate: 99.05,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '6.0.1 Java 17'
       },
       {
         id: 8,
@@ -116,7 +123,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '134.50ms',
         errorRate: 2.80,
         successRate: 97.20,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '4.2.3 Java 17'
       },
       {
         id: 9,
@@ -126,7 +134,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '145.20ms',
         errorRate: 1.25,
         successRate: 98.75,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '3.9.1 Java 11'
       },
       {
         id: 10,
@@ -136,7 +145,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '178.90ms',
         errorRate: 2.45,
         successRate: 97.55,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '5.3.2 Java 17'
       },
       {
         id: 11,
@@ -146,7 +156,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '234.50ms',
         errorRate: 3.75,
         successRate: 96.25,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '2.7.8 Java 11'
       },
       {
         id: 12,
@@ -156,7 +167,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '167.80ms',
         errorRate: 1.95,
         successRate: 98.05,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '4.8.1 Java 17'
       }
     ],
     QA: [
@@ -168,7 +180,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '195.40ms',
         errorRate: 4.20,
         successRate: 95.80,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '4.6.9 Java 17'
       },
       {
         id: 2,
@@ -178,7 +191,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '278.90ms',
         errorRate: 7.80,
         successRate: 92.20,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '3.2.1 Java 11'
       },
       {
         id: 3,
@@ -188,7 +202,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '189.60ms',
         errorRate: 3.15,
         successRate: 96.85,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '5.1.2 Java 17'
       },
       {
         id: 4,
@@ -198,7 +213,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '298.40ms',
         errorRate: 6.25,
         successRate: 93.75,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '2.8.4 Java 11'
       },
       {
         id: 5,
@@ -208,7 +224,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '187.30ms',
         errorRate: 4.85,
         successRate: 95.15,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '4.1.7 Java 17'
       },
       {
         id: 6,
@@ -218,7 +235,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '412.60ms',
         errorRate: 8.95,
         successRate: 91.05,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '3.5.6 Java 11'
       },
       {
         id: 7,
@@ -228,7 +246,8 @@ const ClaimApiDashboard: React.FC = () => {
         responseTime: '156.70ms',
         errorRate: 3.45,
         successRate: 96.55,
-        deploymentType: 'CloudHub 2.0'
+        deploymentType: 'CloudHub 2.0',
+        version: '3.9.1 Java 11'
       }
     ]
   };
@@ -246,7 +265,7 @@ const ClaimApiDashboard: React.FC = () => {
     );
   }, []);
 
-  const currentData: ApiData[] = useMemo(() => apiData[selectedEnv], [selectedEnv]);
+  const currentData: ApiData[] = useMemo(() => apiData[selectedEnv], [selectedEnv, apiData]);
   const filteredData: ApiData[] = useMemo(() => filterApis(currentData, searchQuery), [currentData, searchQuery, filterApis]);
   
   // Calculate overall metrics based on filtered data
@@ -280,7 +299,7 @@ const ClaimApiDashboard: React.FC = () => {
       interval = setInterval(() => {
         setLastUpdated(new Date().toLocaleTimeString());
         // Here you would typically fetch fresh data from your API
-      }, 60000); // Refresh every 60 seconds
+      }, 30000); // Refresh every 30 seconds
     }
 
     return () => {
@@ -304,26 +323,43 @@ const ClaimApiDashboard: React.FC = () => {
   }, []);
 
   const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
-    setSearchInput(e.target.value);
+    setSearchQuery(e.target.value);
   }, []);
 
   const handleSearch = useCallback((): void => {
-    setSearchQuery(searchInput);
-  }, [searchInput]);
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, []);
 
   const handleClearSearch = useCallback((): void => {
-    setSearchInput('');
     setSearchQuery('');
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
   }, []);
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       handleSearch();
     }
   }, [handleSearch]);
 
-  // API Details Page Component
-  const ApiDetailsPage = () => {
+  const getErrorRateColor = (errorRate: number): string => {
+    if (errorRate < 2) return 'text-green-600';
+    if (errorRate < 5) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getSuccessRateColor = (successRate: number): string => {
+    if (successRate >= 98) return 'text-green-600';
+    if (successRate >= 95) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  // Memoize the ApiDetailsPage component
+  const ApiDetailsPage = useMemo(() => {
     if (!selectedApi) return null;
 
     return (
@@ -352,38 +388,28 @@ const ClaimApiDashboard: React.FC = () => {
           </div>
         </nav>
 
-        {/* API Details Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* API Overview */}
-          <div className="bg-white shadow rounded-lg mb-8">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">API Overview</h3>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">API Name</p>
-                  <p className="mt-1 text-lg font-semibold text-gray-900">{selectedApi.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Type</p>
-                  <span className={`mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${
+          {/* API Header */}
+          <div className="bg-white shadow rounded-lg mb-8 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedApi.name}</h2>
+                <div className="flex items-center space-x-4">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                     selectedApi.type === 'Application' 
                       ? 'bg-blue-100 text-blue-800' 
                       : 'bg-green-100 text-green-800'
                   }`}>
                     {selectedApi.type}
                   </span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Deployment Type</p>
-                  <p className="mt-1 text-lg font-semibold text-gray-900">{selectedApi.deploymentType}</p>
+                  <span className="text-sm text-gray-500">ID: {selectedApi.id}</span>
+                  <span className="text-sm text-gray-500">Environment: {selectedEnv}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Performance Metrics */}
+          {/* Detailed Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
@@ -391,118 +417,74 @@ const ClaimApiDashboard: React.FC = () => {
               </div>
               <p className="text-sm font-medium text-gray-500">Request Volume</p>
               <p className="text-3xl font-bold text-gray-900">{selectedApi.requestVolume.toLocaleString()}</p>
-              <div className="flex items-center mt-2 text-sm">
-                <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                <span className="text-green-600">+12% from last hour</span>
-              </div>
             </div>
             
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
-                <Clock className="h-8 w-8 text-yellow-600 mb-2" />
+                <Clock className="h-8 w-8 text-purple-600 mb-2" />
               </div>
-              <p className="text-sm font-medium text-gray-500">Response Time</p>
+              <p className="text-sm font-medium text-gray-500">Response Time (p99)</p>
               <p className="text-3xl font-bold text-gray-900">{selectedApi.responseTime}</p>
-              <div className="flex items-center mt-2 text-sm">
-                <TrendingDown className="h-4 w-4 text-green-500 mr-1" />
-                <span className="text-green-600">-5ms from avg</span>
-              </div>
             </div>
             
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
-                <AlertCircle className="h-8 w-8 text-red-600 mb-2" />
+                <AlertCircle className={`h-8 w-8 mb-2 ${selectedApi.errorRate < 2 ? 'text-green-600' : selectedApi.errorRate < 5 ? 'text-yellow-600' : 'text-red-600'}`} />
               </div>
               <p className="text-sm font-medium text-gray-500">Error Rate</p>
-              <p className={`text-3xl font-bold ${
-                selectedApi.errorRate > 10 ? 'text-red-600' : 
-                selectedApi.errorRate > 5 ? 'text-yellow-600' : 
-                'text-green-600'
-              }`}>
+              <p className={`text-3xl font-bold ${getErrorRateColor(selectedApi.errorRate)}`}>
                 {selectedApi.errorRate.toFixed(2)}%
               </p>
-              <div className="flex items-center mt-2 text-sm">
-                <TrendingDown className="h-4 w-4 text-green-500 mr-1" />
-                <span className="text-green-600">-0.5% from yesterday</span>
-              </div>
             </div>
             
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
-                <CheckCircle className="h-8 w-8 text-green-600 mb-2" />
+                <CheckCircle className={`h-8 w-8 mb-2 ${selectedApi.successRate >= 98 ? 'text-green-600' : selectedApi.successRate >= 95 ? 'text-yellow-600' : 'text-red-600'}`} />
               </div>
               <p className="text-sm font-medium text-gray-500">Success Rate</p>
-              <p className="text-3xl font-bold text-green-600">{selectedApi.successRate.toFixed(2)}%</p>
-              <div className="flex items-center mt-2 text-sm">
-                <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                <span className="text-green-600">+0.5% from yesterday</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Health Status */}
-          <div className="bg-white shadow rounded-lg mb-8">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Health Status</h3>
-            </div>
-            <div className="p-6">
-              <div className="flex items-center">
-                <div className={`flex-shrink-0 h-4 w-4 rounded-full mr-3 ${
-                  selectedApi.errorRate > 10 ? 'bg-red-500' : 'bg-green-500'
-                }`}></div>
-                <span className={`text-lg font-medium ${
-                  selectedApi.errorRate > 10 ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {selectedApi.errorRate > 10 ? 'Unhealthy' : 'Healthy'}
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-gray-600">
-                {selectedApi.errorRate > 10 
-                  ? 'API is experiencing high error rates. Immediate attention required.'
-                  : 'API is performing within normal parameters.'
-                }
+              <p className={`text-3xl font-bold ${getSuccessRateColor(selectedApi.successRate)}`}>
+                {selectedApi.successRate.toFixed(2)}%
               </p>
             </div>
           </div>
 
-          {/* Recent Activity */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 h-2 w-2 bg-green-500 rounded-full mr-3"></div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-900">API deployment successful</p>
-                    <p className="text-xs text-gray-500">2 hours ago</p>
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 h-2 w-2 bg-yellow-500 rounded-full mr-3"></div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-900">Performance monitoring alert resolved</p>
-                    <p className="text-xs text-gray-500">4 hours ago</p>
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 h-2 w-2 bg-blue-500 rounded-full mr-3"></div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-900">Configuration update applied</p>
-                    <p className="text-xs text-gray-500">6 hours ago</p>
-                  </div>
-                </div>
+          {/* Additional Details */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Additional Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">Deployment Details</h4>
+                <p className="text-lg text-gray-900">{selectedApi.deploymentType}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">API Type</h4>
+                <p className="text-lg text-gray-900">{selectedApi.type}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">Version</h4>
+                <p className="text-lg text-gray-900">{selectedApi.version}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">Status</h4>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  selectedApi.errorRate < 5 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {selectedApi.errorRate < 5 ? 'Healthy' : 'Needs Attention'}
+                </span>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">Last Updated</h4>
+                <p className="text-lg text-gray-900">{isMounted ? lastUpdated : '--:--:--'}</p>
               </div>
             </div>
           </div>
         </div>
       </div>
     );
-  };
+  }, [selectedApi, selectedEnv, lastUpdated, isMounted, handleBackToDashboard]);
 
-  // Dashboard Page Component
-  const DashboardPage = () => (
+  // Memoize the DashboardPage component
+  const DashboardPage = useMemo(() => (
     <div className="min-h-screen bg-gray-50">
       {/* Navbar */}
       <nav className="bg-white shadow-sm border-b">
@@ -510,7 +492,7 @@ const ClaimApiDashboard: React.FC = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Activity className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-semibold text-gray-900">API Monitoring Dashboard</h1>
+              <h1 className="text-xl font-semibold text-gray-900">ClaimApi Dashboard</h1>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -550,7 +532,7 @@ const ClaimApiDashboard: React.FC = () => {
                   onClick={() => setIsEnvDropdownOpen(!isEnvDropdownOpen)}
                   className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {selectedEnv}
+                  Environment: {selectedEnv}
                   <ChevronDown className="ml-2 h-4 w-4" />
                 </button>
                 
@@ -589,7 +571,7 @@ const ClaimApiDashboard: React.FC = () => {
           {autoRefresh && (
             <span className="text-sm text-blue-600 flex items-center">
               <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2"></div>
-              Auto-refreshing every 60 sec
+              Auto-refreshing every 30s
             </span>
           )}
         </div>
@@ -602,9 +584,9 @@ const ClaimApiDashboard: React.FC = () => {
                 <Search className="w-5 h-5 text-gray-500" />
               </div>
               <input
-                key="search-input"
+                ref={searchInputRef}
                 type="text"
-                value={searchInput}
+                value={searchQuery}
                 onChange={handleSearchInputChange}
                 onKeyPress={handleKeyPress}
                 placeholder="Search APIs by name (use commas for multiple APIs e.g. claim-processing, claim-validation)"
@@ -618,7 +600,7 @@ const ClaimApiDashboard: React.FC = () => {
             >
               Search
             </button>
-            {(searchQuery || searchInput) && (
+            {searchQuery && (
               <button
                 onClick={handleClearSearch}
                 className="px-4 py-3 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
@@ -690,7 +672,10 @@ const ClaimApiDashboard: React.FC = () => {
                       API Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Version
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Request Volume
@@ -700,9 +685,6 @@ const ClaimApiDashboard: React.FC = () => {
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Error Rate
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Deployment Type
@@ -722,14 +704,15 @@ const ClaimApiDashboard: React.FC = () => {
                           <div className="text-sm font-medium text-gray-900">{api.name}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          api.type === 'Application' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-green-100 text-green-800'
+                          api.errorRate > 10 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
                         }`}>
-                          {api.type}
+                          {api.errorRate > 10 ? 'Not Running' : 'Running'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {api.version}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {api.requestVolume.toLocaleString()}
@@ -745,13 +728,6 @@ const ClaimApiDashboard: React.FC = () => {
                           'text-green-600'
                         }`}>
                           {api.errorRate.toFixed(2)}%
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          api.errorRate > 10 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                        }`}>
-                          {api.errorRate > 10 ? 'Not Running' : 'Running'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -774,10 +750,30 @@ const ClaimApiDashboard: React.FC = () => {
         </div>
       </div>
     </div>
-  );
+  ), [
+    selectedEnv,
+    autoRefresh,
+    lastUpdated,
+    isMounted,
+    searchQuery,
+    filteredData,
+    currentData,
+    handleSearch,
+    handleClearSearch,
+    handleSearchInputChange,
+    handleKeyPress,
+    searchInputRef,
+    entitiesWithErrors,
+    handleApiClick,
+    handleManualRefresh,
+    isEnvDropdownOpen,
+    overallErrorRate,
+    totalEntities,
+    totalRequests
+  ]);
 
   // Render based on view mode
-  return viewMode === 'details' ? <ApiDetailsPage /> : <DashboardPage />;
+  return viewMode === 'details' ? ApiDetailsPage : DashboardPage;
 };
 
 export default ClaimApiDashboard;
