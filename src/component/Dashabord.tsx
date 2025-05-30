@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronDown, Activity, AlertCircle, CheckCircle, Clock, Server, ArrowLeft, RotateCcw, Search, TrendingUp, TrendingDown, Zap } from 'lucide-react';
+import { ChevronDown, Activity, AlertCircle, CheckCircle, Clock, Server, ArrowLeft, RotateCcw, Search, TrendingUp, TrendingDown } from 'lucide-react';
 
 // TypeScript interfaces
 interface ApiData {
