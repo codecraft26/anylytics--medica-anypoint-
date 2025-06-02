@@ -16,16 +16,43 @@ interface ApiData {
   version: string;
 }
 
-interface ApiDataByEnv {
-  PROD: ApiData[];
-  QA: ApiData[];
+interface Environment {
+  envId: string;
+  name: string;
+  orgId: string;
 }
 
-type Environment = 'PROD' | 'QA';
+interface ApiEntity {
+  appName: string;
+  reqVolume: number;
+  errorVolume: number;
+  status: string;
+  deploymentType: string;
+  responseTime: number;
+  memoryUtil: string;
+  throughput: string;
+  cpuUtil: string;
+  version: string;
+  lastUpdateTime: number;
+  createTime: number;
+}
+
+interface MetricsResponse {
+  response: {
+    envId: string;
+    orgId: string;
+    timeFrom: string;
+    timeTo: string;
+    entities: ApiEntity[];
+  };
+}
+
 type ViewMode = 'dashboard' | 'details';
+type TimeFilter = '1h' | '2h' | '12h' | '24h';
 
 const ClaimApiDashboard: React.FC = () => {
-  const [selectedEnv, setSelectedEnv] = useState<Environment>('PROD');
+  const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [selectedEnv, setSelectedEnv] = useState<Environment | null>(null);
   const [selectedApi, setSelectedApi] = useState<ApiData | null>(null);
   const [isEnvDropdownOpen, setIsEnvDropdownOpen] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
@@ -33,224 +60,272 @@ const ClaimApiDashboard: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [isMounted, setIsMounted] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isTimeFilterDropdownOpen, setIsTimeFilterDropdownOpen] = useState<boolean>(false);
+  const [selectedTimeFilter, setSelectedTimeFilter] = useState<TimeFilter>('1h');
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [apiData, setApiData] = useState<ApiData[]>([]);
+  const [isLoadingEnvironments, setIsLoadingEnvironments] = useState<boolean>(true);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Sample API data
-  const apiData: ApiDataByEnv = {
-    PROD: [
-      {
-        id: 1,
-        name: 'claim-processing-api',
-        type: 'Application',
-        requestVolume: 45821,
-        responseTime: '189.30ms',
-        errorRate: 2.15,
-        successRate: 97.85,
-        deploymentType: 'CloudHub 2.0',
-        version: '4.6.9 Java 17'
-      },
-      {
-        id: 2,
-        name: 'claim-validation-api',
-        type: 'API',
-        requestVolume: 32456,
-        responseTime: '245.60ms',
-        errorRate: 5.20,
-        successRate: 94.80,
-        deploymentType: 'CloudHub 2.0',
-        version: '3.2.1 Java 11'
-      },
-      {
-        id: 3,
-        name: 'claim-eligibility-api',
-        type: 'Application',
-        requestVolume: 28140,
-        responseTime: '156.40ms',
-        errorRate: 1.85,
-        successRate: 98.15,
-        deploymentType: 'CloudHub 2.0',
-        version: '5.1.2 Java 17'
-      },
-      {
-        id: 4,
-        name: 'claim-notification-api',
-        type: 'Application',
-        requestVolume: 19876,
-        responseTime: '312.80ms',
-        errorRate: 8.70,
-        successRate: 91.30,
-        deploymentType: 'CloudHub 2.0',
-        version: '2.8.4 Java 11'
-      },
-      {
-        id: 5,
-        name: 'claim-documents-api',
-        type: 'API',
-        requestVolume: 15432,
-        responseTime: '198.20ms',
-        errorRate: 3.45,
-        successRate: 96.55,
-        deploymentType: 'CloudHub 2.0',
-        version: '4.1.7 Java 17'
-      },
-      {
-        id: 6,
-        name: 'claim-payment-api',
-        type: 'Application',
-        requestVolume: 12675,
-        responseTime: '425.10ms',
-        errorRate: 12.30,
-        successRate: 87.70,
-        deploymentType: 'CloudHub 2.0',
-        version: '3.5.6 Java 11'
-      },
-      {
-        id: 7,
-        name: 'claim-history-api',
-        type: 'API',
-        requestVolume: 9854,
-        responseTime: '167.90ms',
-        errorRate: 0.95,
-        successRate: 99.05,
-        deploymentType: 'CloudHub 2.0',
-        version: '6.0.1 Java 17'
-      },
-      {
-        id: 8,
-        name: 'claim-status-api',
-        type: 'Application',
-        requestVolume: 8765,
-        responseTime: '134.50ms',
-        errorRate: 2.80,
-        successRate: 97.20,
-        deploymentType: 'CloudHub 2.0',
-        version: '4.2.3 Java 17'
-      },
-      {
-        id: 9,
-        name: 'claim-audit-api',
-        type: 'API',
-        requestVolume: 6543,
-        responseTime: '145.20ms',
-        errorRate: 1.25,
-        successRate: 98.75,
-        deploymentType: 'CloudHub 2.0',
-        version: '3.9.1 Java 11'
-      },
-      {
-        id: 10,
-        name: 'claim-reporting-api',
-        type: 'Application',
-        requestVolume: 5432,
-        responseTime: '178.90ms',
-        errorRate: 2.45,
-        successRate: 97.55,
-        deploymentType: 'CloudHub 2.0',
-        version: '5.3.2 Java 17'
-      },
-      {
-        id: 11,
-        name: 'claim-analytics-api',
-        type: 'API',
-        requestVolume: 4321,
-        responseTime: '234.50ms',
-        errorRate: 3.75,
-        successRate: 96.25,
-        deploymentType: 'CloudHub 2.0',
-        version: '2.7.8 Java 11'
-      },
-      {
-        id: 12,
-        name: 'claim-workflow-api',
-        type: 'Application',
-        requestVolume: 3456,
-        responseTime: '167.80ms',
-        errorRate: 1.95,
-        successRate: 98.05,
-        deploymentType: 'CloudHub 2.0',
-        version: '4.8.1 Java 17'
+  // Time filter options
+  const timeFilterOptions = [
+    { value: '1h' as TimeFilter, label: 'Last 1 hour' },
+    { value: '2h' as TimeFilter, label: 'Last 2 hours' },
+    { value: '12h' as TimeFilter, label: 'Last 12 hours' },
+    { value: '24h' as TimeFilter, label: 'Last 24 hours' }
+  ];
+
+  // Calculate time range based on filter
+  const getTimeRange = useCallback((timeFilter: TimeFilter) => {
+    const now = new Date();
+    const timeTo = now.toISOString();
+    
+    let hoursBack = 1;
+    switch (timeFilter) {
+      case '2h':
+        hoursBack = 2;
+        break;
+      case '12h':
+        hoursBack = 12;
+        break;
+      case '24h':
+        hoursBack = 24;
+        break;
+      default:
+        hoursBack = 1;
+    }
+    
+    const timeFrom = new Date(now.getTime() - hoursBack * 60 * 60 * 1000).toISOString();
+    return { timeFrom, timeTo };
+  }, []);
+
+  // Fetch environments from API
+  const fetchEnvironments = useCallback(async () => {
+    try {
+      setIsLoadingEnvironments(true);
+      
+      // Add timeout to the fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+      const response = await fetch('http://localhost:8081/api/environments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: "Clear"
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    ],
-    QA: [
-      {
-        id: 1,
-        name: 'claim-processing-api',
-        type: 'Application',
-        requestVolume: 1250,
-        responseTime: '195.40ms',
-        errorRate: 4.20,
-        successRate: 95.80,
-        deploymentType: 'CloudHub 2.0',
-        version: '4.6.9 Java 17'
-      },
-      {
-        id: 2,
-        name: 'claim-validation-api',
-        type: 'API',
-        requestVolume: 890,
-        responseTime: '278.90ms',
-        errorRate: 7.80,
-        successRate: 92.20,
-        deploymentType: 'CloudHub 2.0',
-        version: '3.2.1 Java 11'
-      },
-      {
-        id: 3,
-        name: 'claim-eligibility-api',
-        type: 'Application',
-        requestVolume: 756,
-        responseTime: '189.60ms',
-        errorRate: 3.15,
-        successRate: 96.85,
-        deploymentType: 'CloudHub 2.0',
-        version: '5.1.2 Java 17'
-      },
-      {
-        id: 4,
-        name: 'claim-notification-api',
-        type: 'Application',
-        requestVolume: 432,
-        responseTime: '298.40ms',
-        errorRate: 6.25,
-        successRate: 93.75,
-        deploymentType: 'CloudHub 2.0',
-        version: '2.8.4 Java 11'
-      },
-      {
-        id: 5,
-        name: 'claim-documents-api',
-        type: 'API',
-        requestVolume: 321,
-        responseTime: '187.30ms',
-        errorRate: 4.85,
-        successRate: 95.15,
-        deploymentType: 'CloudHub 2.0',
-        version: '4.1.7 Java 17'
-      },
-      {
-        id: 6,
-        name: 'claim-payment-api',
-        type: 'Application',
-        requestVolume: 287,
-        responseTime: '412.60ms',
-        errorRate: 8.95,
-        successRate: 91.05,
-        deploymentType: 'CloudHub 2.0',
-        version: '3.5.6 Java 11'
-      },
-      {
-        id: 7,
-        name: 'claim-audit-api',
-        type: 'API',
-        requestVolume: 198,
-        responseTime: '156.70ms',
-        errorRate: 3.45,
-        successRate: 96.55,
-        deploymentType: 'CloudHub 2.0',
-        version: '3.9.1 Java 11'
+
+      const environments: Environment[] = await response.json();
+      
+      if (!environments || !Array.isArray(environments) || environments.length === 0) {
+        throw new Error('Invalid environment data received');
       }
-    ]
-  };
+
+      setEnvironments(environments);
+      
+      // Set default environment (PROD if available, otherwise first one)
+      const prodEnv = environments.find(env => env.name === 'PROD');
+      const defaultEnv = prodEnv || environments[0];
+      if (defaultEnv) {
+        setSelectedEnv(defaultEnv);
+      }
+    } catch (error) {
+      console.error('Error fetching environments:', error);
+      
+      // More detailed error logging
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.error('Request timed out');
+        } else if (error.message.includes('Failed to fetch')) {
+          console.error('Network error - server might be down');
+        }
+      }
+
+      // Fallback to mock data in case of error
+      const fallbackEnvs: Environment[] = [
+        { envId: "prod-id", name: "PROD", orgId: "org-id" },
+        { envId: "qa-id", name: "QA", orgId: "org-id" },
+        { envId: "dev-id", name: "DEV", orgId: "org-id" }
+      ];
+      
+      setEnvironments(fallbackEnvs);
+      setSelectedEnv(fallbackEnvs[0]);
+      
+      // Show error message to user
+      const errorMessage = error instanceof Error && error.name === 'AbortError'
+        ? 'Server connection timed out. Using fallback data.'
+        : 'Unable to connect to the server. Using fallback data.';
+      
+      alert(errorMessage);
+    } finally {
+      setIsLoadingEnvironments(false);
+    }
+  }, []);
+
+  // Convert API entity to internal format
+  const convertToApiData = useCallback((entity: ApiEntity, index: number): ApiData => {
+    const errorRate = entity.reqVolume > 0 ? (entity.errorVolume / entity.reqVolume) * 100 : 0;
+    const successRate = 100 - errorRate;
+    
+    return {
+      id: index + 1,
+      name: entity.appName,
+      type: 'Application', // Could be determined by some logic
+      requestVolume: entity.reqVolume,
+      responseTime: `${entity.responseTime.toFixed(2)}ms`,
+      errorRate,
+      successRate,
+      deploymentType: entity.deploymentType,
+      version: entity.version
+    };
+  }, []);
+
+  // API call function for fetching metrics
+  const performSearch = useCallback(async (query: string, timeFilter: TimeFilter, environment: Environment) => {
+    if (!environment) return;
+    
+    setIsSearching(true);
+    
+    try {
+      const { timeFrom, timeTo } = getTimeRange(timeFilter);
+      
+      const requestBody = {
+        request: {
+          envId: environment.envId,
+          orgId: environment.orgId,
+          timeFrom,
+          timeTo,
+          appName: query.trim()
+        },
+        action: "clear"
+      };
+
+      const response = await fetch('http://localhost:8081/api/metrics', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: MetricsResponse = await response.json();
+      const convertedData = data.response.entities.map((entity, index) => 
+        convertToApiData(entity, index)
+      );
+      
+      setApiData(convertedData);
+      setLastUpdated(new Date().toLocaleTimeString());
+    } catch (error) {
+      console.error('Error fetching metrics:', error);
+      setApiData([]);
+      // Show error message to user
+      alert('Unable to fetch metrics. Please check if the server is running.');
+    } finally {
+      setIsSearching(false);
+    }
+  }, [getTimeRange, convertToApiData]);
+
+  // Add a retry mechanism for environment fetching
+  useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 3;
+    const retryInterval = 5000; // 5 seconds
+    let retryTimeout: NodeJS.Timeout;
+
+    const attemptFetch = async () => {
+      try {
+        await fetchEnvironments();
+      } catch (error) {
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.log(`Retrying environment fetch (${retryCount}/${maxRetries})...`);
+          retryTimeout = setTimeout(attemptFetch, retryInterval);
+        }
+      }
+    };
+
+    attemptFetch();
+
+    // Cleanup function to clear any pending retries
+    return () => {
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
+    };
+  }, [fetchEnvironments]);
+
+  // Add a manual retry button in the UI
+  const handleRetryConnection = useCallback(() => {
+    fetchEnvironments();
+  }, [fetchEnvironments]);
+
+  // Update the environment dropdown to include retry button
+  const EnvironmentDropdown = useMemo(() => (
+    <div className="relative">
+      <button
+        onClick={() => setIsEnvDropdownOpen(!isEnvDropdownOpen)}
+        className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        disabled={isLoadingEnvironments}
+      >
+        {isLoadingEnvironments ? 'Loading...' : selectedEnv?.name || 'Select Environment'}
+        <ChevronDown className="ml-2 h-4 w-4" />
+      </button>
+      
+      {isEnvDropdownOpen && !isLoadingEnvironments && (
+        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
+          <div className="py-1">
+            {environments.map((env: Environment) => (
+              <button
+                key={env.envId}
+                onClick={() => {
+                  setSelectedEnv(env);
+                  setIsEnvDropdownOpen(false);
+                  setApiData([]);
+                  setSearchQuery('');
+                }}
+                className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                  selectedEnv?.envId === env.envId ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                }`}
+              >
+                {env.name}
+              </button>
+            ))}
+            <div className="border-t border-gray-100 mt-1 pt-1">
+              <button
+                onClick={() => {
+                  setIsEnvDropdownOpen(false);
+                  handleRetryConnection();
+                }}
+                className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
+              >
+                Retry Connection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  ), [
+    isEnvDropdownOpen,
+    isLoadingEnvironments,
+    selectedEnv,
+    environments,
+    handleRetryConnection
+  ]);
 
   // Filter APIs based on comma-separated search query
   const filterApis = useCallback((apis: ApiData[], query: string): ApiData[] => {
@@ -265,8 +340,7 @@ const ClaimApiDashboard: React.FC = () => {
     );
   }, []);
 
-  const currentData: ApiData[] = useMemo(() => apiData[selectedEnv], [selectedEnv, apiData]);
-  const filteredData: ApiData[] = useMemo(() => filterApis(currentData, searchQuery), [currentData, searchQuery, filterApis]);
+  const filteredData: ApiData[] = useMemo(() => filterApis(apiData, searchQuery), [apiData, searchQuery, filterApis]);
   
   // Calculate overall metrics based on filtered data
   const { totalRequests, totalEntities, entitiesWithErrors, overallErrorRate } = useMemo(() => {
@@ -284,6 +358,11 @@ const ClaimApiDashboard: React.FC = () => {
       overallErrorRate: errorRate
     };
   }, [filteredData]);
+
+  // Fetch environments on component mount
+  useEffect(() => {
+    fetchEnvironments();
+  }, [fetchEnvironments]);
 
   // Initialize time after component mounts to avoid hydration mismatch
   useEffect(() => {
@@ -326,10 +405,17 @@ const ClaimApiDashboard: React.FC = () => {
     setSearchQuery(e.target.value);
   }, []);
 
-  const handleSearch = useCallback((): void => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
+  const handleSearchButtonClick = useCallback((): void => {
+    if (searchQuery.trim() && selectedEnv) {
+      performSearch(searchQuery, selectedTimeFilter, selectedEnv);
+    } else if (!selectedEnv) {
+      alert('Please select an environment first.');
     }
+  }, [searchQuery, selectedTimeFilter, selectedEnv, performSearch]);
+
+  const handleTimeFilterSelect = useCallback((timeFilter: TimeFilter): void => {
+    setSelectedTimeFilter(timeFilter);
+    setIsTimeFilterDropdownOpen(false);
   }, []);
 
   const handleClearSearch = useCallback((): void => {
@@ -342,9 +428,13 @@ const ClaimApiDashboard: React.FC = () => {
   const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleSearch();
+      if (searchQuery.trim() && selectedEnv) {
+        performSearch(searchQuery, selectedTimeFilter, selectedEnv);
+      } else if (!selectedEnv) {
+        alert('Please select an environment first.');
+      }
     }
-  }, [handleSearch]);
+  }, [searchQuery, selectedTimeFilter, selectedEnv, performSearch]);
 
   const getErrorRateColor = (errorRate: number): string => {
     if (errorRate < 2) return 'text-green-600';
@@ -382,7 +472,7 @@ const ClaimApiDashboard: React.FC = () => {
               </div>
               
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-500">Environment: {selectedEnv}</span>
+                <span className="text-sm text-gray-500">Environment: {selectedEnv?.name}</span>
               </div>
             </div>
           </div>
@@ -403,7 +493,7 @@ const ClaimApiDashboard: React.FC = () => {
                     {selectedApi.type}
                   </span>
                   <span className="text-sm text-gray-500">ID: {selectedApi.id}</span>
-                  <span className="text-sm text-gray-500">Environment: {selectedEnv}</span>
+                  <span className="text-sm text-gray-500">Environment: {selectedEnv?.name}</span>
                 </div>
               </div>
             </div>
@@ -492,7 +582,7 @@ const ClaimApiDashboard: React.FC = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Activity className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-semibold text-gray-900">ClaimApi Dashboard</h1>
+              <h1 className="text-xl font-semibold text-gray-900">Monitoring Dashboard</h1>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -527,36 +617,7 @@ const ClaimApiDashboard: React.FC = () => {
               </button>
 
               {/* Environment Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsEnvDropdownOpen(!isEnvDropdownOpen)}
-                  className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  Environment: {selectedEnv}
-                  <ChevronDown className="ml-2 h-4 w-4" />
-                </button>
-                
-                {isEnvDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
-                    <div className="py-1">
-                      {(['QA', 'PROD'] as Environment[]).map((env: Environment) => (
-                        <button
-                          key={env}
-                          onClick={() => {
-                            setSelectedEnv(env);
-                            setIsEnvDropdownOpen(false);
-                          }}
-                          className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
-                            selectedEnv === env ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                          }`}
-                        >
-                          {env}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              {EnvironmentDropdown}
             </div>
           </div>
         </div>
@@ -576,9 +637,41 @@ const ClaimApiDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Search Bar with Button */}
+        {/* Search Bar with Time Filter Dropdown and Search Button */}
         <div className="mb-6">
           <div className="flex gap-2">
+            {/* Time Filter Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsTimeFilterDropdownOpen(!isTimeFilterDropdownOpen)}
+                className="flex items-center px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {timeFilterOptions.find(opt => opt.value === selectedTimeFilter)?.label}
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </button>
+              
+              {isTimeFilterDropdownOpen && (
+                <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border">
+                  <div className="py-1">
+                    <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                      Time Range
+                    </div>
+                    {timeFilterOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => handleTimeFilterSelect(option.value)}
+                        className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                          selectedTimeFilter === option.value ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="relative flex-1">
               <div className="absolute inset-y-0 start-0 flex items-center pl-3 pointer-events-none">
                 <Search className="w-5 h-5 text-gray-500" />
@@ -593,13 +686,23 @@ const ClaimApiDashboard: React.FC = () => {
                 className="block w-full p-3 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500"
                 autoComplete="off"
               />
+              {isSearching && (
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                </div>
+              )}
             </div>
+            
+            {/* Search Button */}
             <button
-              onClick={handleSearch}
-              className="px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              onClick={handleSearchButtonClick}
+              className="flex items-center px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              disabled={isSearching}
             >
+              <Search className="w-4 h-4 mr-2" />
               Search
             </button>
+            
             {searchQuery && (
               <button
                 onClick={handleClearSearch}
@@ -609,11 +712,16 @@ const ClaimApiDashboard: React.FC = () => {
               </button>
             )}
           </div>
-          {searchQuery && (
-            <div className="mt-2 text-sm text-gray-600">
-              <span className="font-medium">Showing {filteredData.length} of {currentData.length} APIs</span>
-            </div>
-          )}
+          
+          {/* Search Info */}
+          <div className="mt-2 flex justify-between items-center text-sm text-gray-600">
+            {searchQuery && (
+              <span className="font-medium">Showing {filteredData.length} of {apiData.length} APIs</span>
+            )}
+            <span className="text-gray-500">
+              Selected: {timeFilterOptions.find(opt => opt.value === selectedTimeFilter)?.label}
+            </span>
+          </div>
         </div>
 
         {/* Performance Metrics */}
@@ -675,9 +783,6 @@ const ClaimApiDashboard: React.FC = () => {
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Version
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Request Volume
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -711,9 +816,6 @@ const ClaimApiDashboard: React.FC = () => {
                           {api.errorRate > 10 ? 'Not Running' : 'Running'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {api.version}
-                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {api.requestVolume.toLocaleString()}
                       </td>
@@ -741,8 +843,10 @@ const ClaimApiDashboard: React.FC = () => {
               <div className="p-6 text-center text-gray-500">
                 {searchQuery ? (
                   <p>No APIs match your search criteria. Try adjusting your search.</p>
+                ) : selectedEnv ? (
+                  <p>Enter search terms and click Search to load API data.</p>
                 ) : (
-                  <p>No APIs available for the selected environment.</p>
+                  <p>Please select an environment to begin.</p>
                 )}
               </div>
             )}
@@ -757,8 +861,8 @@ const ClaimApiDashboard: React.FC = () => {
     isMounted,
     searchQuery,
     filteredData,
-    currentData,
-    handleSearch,
+    apiData,
+    handleSearchButtonClick,
     handleClearSearch,
     handleSearchInputChange,
     handleKeyPress,
@@ -769,7 +873,14 @@ const ClaimApiDashboard: React.FC = () => {
     isEnvDropdownOpen,
     overallErrorRate,
     totalEntities,
-    totalRequests
+    totalRequests,
+    isTimeFilterDropdownOpen,
+    selectedTimeFilter,
+    timeFilterOptions,
+    handleTimeFilterSelect,
+    isSearching,
+    environments,
+    isLoadingEnvironments
   ]);
 
   // Render based on view mode
