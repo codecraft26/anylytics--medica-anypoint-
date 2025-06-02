@@ -64,8 +64,45 @@ const API_CONFIG = {
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_CONFIG.BASE_URL,
-  headers: API_CONFIG.HEADERS
+  headers: API_CONFIG.HEADERS,
+  withCredentials: true, // Enable sending cookies in cross-origin requests
+  validateStatus: function (status) {
+    return status >= 200 && status < 500; // Accept all status codes less than 500
+  }
 });
+
+// Add request interceptor to handle CORS
+api.interceptors.request.use(
+  (config) => {
+    // Add CORS headers
+    config.headers['Access-Control-Allow-Origin'] = '*';
+    config.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+    config.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, client_id, client_secret';
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('Response error:', error.response.data);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('Request error:', error.request);
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Error:', error.message);
+    }
+    return Promise.reject(error);
+  }
+);
 
 const ClaimApiDashboard: React.FC = () => {
   const [environments, setEnvironments] = useState<Environment[]>([]);
