@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ChevronDown, Activity, AlertCircle, CheckCircle, Clock, Server, ArrowLeft, RotateCcw, Search } from 'lucide-react';
+import axios from 'axios';
 
 // TypeScript interfaces
 interface ApiData {
@@ -52,13 +53,19 @@ type TimeFilter = '1h' | '2h' | '12h' | '24h';
 
 // API Configuration - Update these values as needed
 const API_CONFIG = {
-  BASE_URL: 'http://localhost:8081/api',
+  BASE_URL: 'http://localhost:8081/v1/api',
   HEADERS: {
     'Content-Type': 'application/json',
-    'client_id': 'your-client-id',        // Replace with your actual client_id
-    'client_secret': 'your-client-secret' // Replace with your actual client_secret
+    'client_id': '4834',        // Replace with your actual client_id
+    'client_secret': '43434' // Replace with your actual client_secret
   }
 };
+
+// Create axios instance with default config
+const api = axios.create({
+  baseURL: API_CONFIG.BASE_URL,
+  headers: API_CONFIG.HEADERS
+});
 
 const ClaimApiDashboard: React.FC = () => {
   const [environments, setEnvironments] = useState<Environment[]>([]);
@@ -113,19 +120,11 @@ const ClaimApiDashboard: React.FC = () => {
   const fetchEnvironments = useCallback(async () => {
     try {
       setIsLoadingEnvironments(true);
-      const response = await fetch(`${API_CONFIG.BASE_URL}/environments`, {
-        method: 'POST',
-        headers: API_CONFIG.HEADERS,
-        body: JSON.stringify({
-          action: "Clear"
-        })
+      const response = await api.post('/environments', {
+        action: "Clear"
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch environments');
-      }
-
-      const environments: Environment[] = await response.json();
+      const environments: Environment[] = response.data;
       setEnvironments(environments);
       
       // Set default environment (PROD if available, otherwise first one)
@@ -186,17 +185,9 @@ const ClaimApiDashboard: React.FC = () => {
         action: "clear"
       };
 
-      const response = await fetch(`${API_CONFIG.BASE_URL}/metrics`, {
-        method: 'POST',
-        headers: API_CONFIG.HEADERS,
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch metrics');
-      }
-
-      const data: MetricsResponse = await response.json();
+      const response = await api.post('/metrics', requestBody);
+      const data: MetricsResponse = response.data;
+      
       const convertedData = data.response.entities.map((entity, index) => 
         convertToApiData(entity, index)
       );
@@ -292,7 +283,7 @@ const ClaimApiDashboard: React.FC = () => {
   }, []);
 
   const handleSearchButtonClick = useCallback((): void => {
-    if (searchQuery.trim()) {
+    if (searchQuery.trim() && selectedEnv) {
       performSearch(searchQuery, selectedTimeFilter, selectedEnv);
     }
   }, [searchQuery, selectedTimeFilter, selectedEnv, performSearch]);
@@ -312,7 +303,7 @@ const ClaimApiDashboard: React.FC = () => {
   const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (searchQuery.trim()) {
+      if (searchQuery.trim() && selectedEnv) {
         performSearch(searchQuery, selectedTimeFilter, selectedEnv);
       }
     }
