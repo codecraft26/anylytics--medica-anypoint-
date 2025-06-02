@@ -50,6 +50,16 @@ interface MetricsResponse {
 type ViewMode = 'dashboard' | 'details';
 type TimeFilter = '1h' | '2h' | '12h' | '24h';
 
+// API Configuration - Update these values as needed
+const API_CONFIG = {
+  BASE_URL: 'http://localhost:8081/api',
+  HEADERS: {
+    'Content-Type': 'application/json',
+    'client_id': 'your-client-id',        // Replace with your actual client_id
+    'client_secret': 'your-client-secret' // Replace with your actual client_secret
+  }
+};
+
 const ClaimApiDashboard: React.FC = () => {
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [selectedEnv, setSelectedEnv] = useState<Environment | null>(null);
@@ -103,34 +113,19 @@ const ClaimApiDashboard: React.FC = () => {
   const fetchEnvironments = useCallback(async () => {
     try {
       setIsLoadingEnvironments(true);
-      
-      // Add timeout to the fetch request
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-
-      const response = await fetch('http://localhost:8081/api/environments', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/environments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: API_CONFIG.HEADERS,
         body: JSON.stringify({
           action: "Clear"
-        }),
-        signal: controller.signal
+        })
       });
 
-      clearTimeout(timeoutId);
-
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error('Failed to fetch environments');
       }
 
       const environments: Environment[] = await response.json();
-      
-      if (!environments || !Array.isArray(environments) || environments.length === 0) {
-        throw new Error('Invalid environment data received');
-      }
-
       setEnvironments(environments);
       
       // Set default environment (PROD if available, otherwise first one)
@@ -141,32 +136,13 @@ const ClaimApiDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching environments:', error);
-      
-      // More detailed error logging
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          console.error('Request timed out');
-        } else if (error.message.includes('Failed to fetch')) {
-          console.error('Network error - server might be down');
-        }
-      }
-
       // Fallback to mock data in case of error
       const fallbackEnvs: Environment[] = [
         { envId: "prod-id", name: "PROD", orgId: "org-id" },
-        { envId: "qa-id", name: "QA", orgId: "org-id" },
-        { envId: "dev-id", name: "DEV", orgId: "org-id" }
+        { envId: "qa-id", name: "QA", orgId: "org-id" }
       ];
-      
       setEnvironments(fallbackEnvs);
       setSelectedEnv(fallbackEnvs[0]);
-      
-      // Show error message to user
-      const errorMessage = error instanceof Error && error.name === 'AbortError'
-        ? 'Server connection timed out. Using fallback data.'
-        : 'Unable to connect to the server. Using fallback data.';
-      
-      alert(errorMessage);
     } finally {
       setIsLoadingEnvironments(false);
     }
@@ -210,16 +186,14 @@ const ClaimApiDashboard: React.FC = () => {
         action: "clear"
       };
 
-      const response = await fetch('http://localhost:8081/api/metrics', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/metrics`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: API_CONFIG.HEADERS,
         body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error('Failed to fetch metrics');
       }
 
       const data: MetricsResponse = await response.json();
@@ -232,100 +206,12 @@ const ClaimApiDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error fetching metrics:', error);
       setApiData([]);
-      // Show error message to user
-      alert('Unable to fetch metrics. Please check if the server is running.');
     } finally {
       setIsSearching(false);
     }
   }, [getTimeRange, convertToApiData]);
 
-  // Add a retry mechanism for environment fetching
-  useEffect(() => {
-    let retryCount = 0;
-    const maxRetries = 3;
-    const retryInterval = 5000; // 5 seconds
-    let retryTimeout: NodeJS.Timeout;
-
-    const attemptFetch = async () => {
-      try {
-        await fetchEnvironments();
-      } catch (error) {
-        if (retryCount < maxRetries) {
-          retryCount++;
-          console.log(`Retrying environment fetch (${retryCount}/${maxRetries})...`);
-          retryTimeout = setTimeout(attemptFetch, retryInterval);
-        }
-      }
-    };
-
-    attemptFetch();
-
-    // Cleanup function to clear any pending retries
-    return () => {
-      if (retryTimeout) {
-        clearTimeout(retryTimeout);
-      }
-    };
-  }, [fetchEnvironments]);
-
-  // Add a manual retry button in the UI
-  const handleRetryConnection = useCallback(() => {
-    fetchEnvironments();
-  }, [fetchEnvironments]);
-
-  // Update the environment dropdown to include retry button
-  const EnvironmentDropdown = useMemo(() => (
-    <div className="relative">
-      <button
-        onClick={() => setIsEnvDropdownOpen(!isEnvDropdownOpen)}
-        className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        disabled={isLoadingEnvironments}
-      >
-        {isLoadingEnvironments ? 'Loading...' : selectedEnv?.name || 'Select Environment'}
-        <ChevronDown className="ml-2 h-4 w-4" />
-      </button>
-      
-      {isEnvDropdownOpen && !isLoadingEnvironments && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
-          <div className="py-1">
-            {environments.map((env: Environment) => (
-              <button
-                key={env.envId}
-                onClick={() => {
-                  setSelectedEnv(env);
-                  setIsEnvDropdownOpen(false);
-                  setApiData([]);
-                  setSearchQuery('');
-                }}
-                className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
-                  selectedEnv?.envId === env.envId ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                }`}
-              >
-                {env.name}
-              </button>
-            ))}
-            <div className="border-t border-gray-100 mt-1 pt-1">
-              <button
-                onClick={() => {
-                  setIsEnvDropdownOpen(false);
-                  handleRetryConnection();
-                }}
-                className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
-              >
-                Retry Connection
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  ), [
-    isEnvDropdownOpen,
-    isLoadingEnvironments,
-    selectedEnv,
-    environments,
-    handleRetryConnection
-  ]);
+  // Remove auto-search - only search when button is clicked
 
   // Filter APIs based on comma-separated search query
   const filterApis = useCallback((apis: ApiData[], query: string): ApiData[] => {
@@ -406,10 +292,8 @@ const ClaimApiDashboard: React.FC = () => {
   }, []);
 
   const handleSearchButtonClick = useCallback((): void => {
-    if (searchQuery.trim() && selectedEnv) {
+    if (searchQuery.trim()) {
       performSearch(searchQuery, selectedTimeFilter, selectedEnv);
-    } else if (!selectedEnv) {
-      alert('Please select an environment first.');
     }
   }, [searchQuery, selectedTimeFilter, selectedEnv, performSearch]);
 
@@ -428,10 +312,8 @@ const ClaimApiDashboard: React.FC = () => {
   const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (searchQuery.trim() && selectedEnv) {
+      if (searchQuery.trim()) {
         performSearch(searchQuery, selectedTimeFilter, selectedEnv);
-      } else if (!selectedEnv) {
-        alert('Please select an environment first.');
       }
     }
   }, [searchQuery, selectedTimeFilter, selectedEnv, performSearch]);
@@ -617,7 +499,40 @@ const ClaimApiDashboard: React.FC = () => {
               </button>
 
               {/* Environment Dropdown */}
-              {EnvironmentDropdown}
+              <div className="relative">
+                <button
+                  onClick={() => setIsEnvDropdownOpen(!isEnvDropdownOpen)}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isLoadingEnvironments}
+                >
+                  {isLoadingEnvironments ? 'Loading...' : selectedEnv?.name || 'Select Environment'}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </button>
+                
+                {isEnvDropdownOpen && !isLoadingEnvironments && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
+                    <div className="py-1">
+                      {environments.map((env: Environment) => (
+                        <button
+                          key={env.envId}
+                          onClick={() => {
+                            setSelectedEnv(env);
+                            setIsEnvDropdownOpen(false);
+                            // Clear current data when switching environments
+                            setApiData([]);
+                            setSearchQuery('');
+                          }}
+                          className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                            selectedEnv?.envId === env.envId ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          }`}
+                        >
+                          {env.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
