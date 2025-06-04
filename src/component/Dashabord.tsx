@@ -15,9 +15,8 @@ interface ApiData {
   deploymentType: string;
   version: string;
   memoryUtilization: string;
-  "errorRate": string;
-  "cpuUtilization": string;
-  "throughput": string;
+  cpuUtilization: string;
+  throughput: string;
 }
 
 interface ApiDataByEnv {
@@ -482,7 +481,6 @@ const apiData: ApiDataByEnv = {
               <p className="text-3xl font-bold text-gray-900">{selectedApi.requestVolume.toLocaleString()}</p>
             </div>
             
-            
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <Clock className="h-8 w-8 text-purple-600 mb-2" />
@@ -510,7 +508,30 @@ const apiData: ApiDataByEnv = {
                 {selectedApi.successRate.toFixed(2)}%
               </p>
             </div>
-           
+
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <Server className="h-8 w-8 text-blue-600 mb-2" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">Memory Utilization</p>
+              <p className="text-3xl font-bold text-gray-900">{parseFloat(selectedApi.memoryUtilization).toFixed(2)}%</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <Activity className="h-8 w-8 text-green-600 mb-2" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">CPU Utilization</p>
+              <p className="text-3xl font-bold text-gray-900">{parseFloat(selectedApi.cpuUtilization).toFixed(2)}%</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <Activity className="h-8 w-8 text-purple-600 mb-2" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">Throughput</p>
+              <p className="text-3xl font-bold text-gray-900">{(parseFloat(selectedApi.throughput) * 100).toFixed(2)} req/s</p>
+            </div>
           </div>
 
          
