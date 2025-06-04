@@ -14,6 +14,10 @@ interface ApiData {
   successRate: number;
   deploymentType: string;
   version: string;
+  memoryUtilization: string;
+  "errorRate": string;
+  "cpuUtilization": string;
+  "throughput": string;
 }
 
 interface ApiDataByEnv {
@@ -36,221 +40,280 @@ const ClaimApiDashboard: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Sample API data
-  const apiData: ApiDataByEnv = {
-    PROD: [
-      {
-        id: 1,
-        name: 'claim-processing-api',
-        type: 'Application',
-        requestVolume: 45821,
-        responseTime: '189.30ms',
-        errorRate: 2.15,
-        successRate: 97.85,
-        deploymentType: 'CloudHub 2.0',
-        version: '4.6.9 Java 17'
-      },
-      {
-        id: 2,
-        name: 'claim-validation-api',
-        type: 'API',
-        requestVolume: 32456,
-        responseTime: '245.60ms',
-        errorRate: 5.20,
-        successRate: 94.80,
-        deploymentType: 'CloudHub 2.0',
-        version: '3.2.1 Java 11'
-      },
-      {
-        id: 3,
-        name: 'claim-eligibility-api',
-        type: 'Application',
-        requestVolume: 28140,
-        responseTime: '156.40ms',
-        errorRate: 1.85,
-        successRate: 98.15,
-        deploymentType: 'CloudHub 2.0',
-        version: '5.1.2 Java 17'
-      },
-      {
-        id: 4,
-        name: 'claim-notification-api',
-        type: 'Application',
-        requestVolume: 19876,
-        responseTime: '312.80ms',
-        errorRate: 8.70,
-        successRate: 91.30,
-        deploymentType: 'CloudHub 2.0',
-        version: '2.8.4 Java 11'
-      },
-      {
-        id: 5,
-        name: 'claim-documents-api',
-        type: 'API',
-        requestVolume: 15432,
-        responseTime: '198.20ms',
-        errorRate: 3.45,
-        successRate: 96.55,
-        deploymentType: 'CloudHub 2.0',
-        version: '4.1.7 Java 17'
-      },
-      {
-        id: 6,
-        name: 'claim-payment-api',
-        type: 'Application',
-        requestVolume: 12675,
-        responseTime: '425.10ms',
-        errorRate: 12.30,
-        successRate: 87.70,
-        deploymentType: 'CloudHub 2.0',
-        version: '3.5.6 Java 11'
-      },
-      {
-        id: 7,
-        name: 'claim-history-api',
-        type: 'API',
-        requestVolume: 9854,
-        responseTime: '167.90ms',
-        errorRate: 0.95,
-        successRate: 99.05,
-        deploymentType: 'CloudHub 2.0',
-        version: '6.0.1 Java 17'
-      },
-      {
-        id: 8,
-        name: 'claim-status-api',
-        type: 'Application',
-        requestVolume: 8765,
-        responseTime: '134.50ms',
-        errorRate: 2.80,
-        successRate: 97.20,
-        deploymentType: 'CloudHub 2.0',
-        version: '4.2.3 Java 17'
-      },
-      {
-        id: 9,
-        name: 'claim-audit-api',
-        type: 'API',
-        requestVolume: 6543,
-        responseTime: '145.20ms',
-        errorRate: 1.25,
-        successRate: 98.75,
-        deploymentType: 'CloudHub 2.0',
-        version: '3.9.1 Java 11'
-      },
-      {
-        id: 10,
-        name: 'claim-reporting-api',
-        type: 'Application',
-        requestVolume: 5432,
-        responseTime: '178.90ms',
-        errorRate: 2.45,
-        successRate: 97.55,
-        deploymentType: 'CloudHub 2.0',
-        version: '5.3.2 Java 17'
-      },
-      {
-        id: 11,
-        name: 'claim-analytics-api',
-        type: 'API',
-        requestVolume: 4321,
-        responseTime: '234.50ms',
-        errorRate: 3.75,
-        successRate: 96.25,
-        deploymentType: 'CloudHub 2.0',
-        version: '2.7.8 Java 11'
-      },
-      {
-        id: 12,
-        name: 'claim-workflow-api',
-        type: 'Application',
-        requestVolume: 3456,
-        responseTime: '167.80ms',
-        errorRate: 1.95,
-        successRate: 98.05,
-        deploymentType: 'CloudHub 2.0',
-        version: '4.8.1 Java 17'
-      }
-    ],
-    QA: [
-      {
-        id: 1,
-        name: 'claim-processing-api',
-        type: 'Application',
-        requestVolume: 1250,
-        responseTime: '195.40ms',
-        errorRate: 4.20,
-        successRate: 95.80,
-        deploymentType: 'CloudHub 2.0',
-        version: '4.6.9 Java 17'
-      },
-      {
-        id: 2,
-        name: 'claim-validation-api',
-        type: 'API',
-        requestVolume: 890,
-        responseTime: '278.90ms',
-        errorRate: 7.80,
-        successRate: 92.20,
-        deploymentType: 'CloudHub 2.0',
-        version: '3.2.1 Java 11'
-      },
-      {
-        id: 3,
-        name: 'claim-eligibility-api',
-        type: 'Application',
-        requestVolume: 756,
-        responseTime: '189.60ms',
-        errorRate: 3.15,
-        successRate: 96.85,
-        deploymentType: 'CloudHub 2.0',
-        version: '5.1.2 Java 17'
-      },
-      {
-        id: 4,
-        name: 'claim-notification-api',
-        type: 'Application',
-        requestVolume: 432,
-        responseTime: '298.40ms',
-        errorRate: 6.25,
-        successRate: 93.75,
-        deploymentType: 'CloudHub 2.0',
-        version: '2.8.4 Java 11'
-      },
-      {
-        id: 5,
-        name: 'claim-documents-api',
-        type: 'API',
-        requestVolume: 321,
-        responseTime: '187.30ms',
-        errorRate: 4.85,
-        successRate: 95.15,
-        deploymentType: 'CloudHub 2.0',
-        version: '4.1.7 Java 17'
-      },
-      {
-        id: 6,
-        name: 'claim-payment-api',
-        type: 'Application',
-        requestVolume: 287,
-        responseTime: '412.60ms',
-        errorRate: 8.95,
-        successRate: 91.05,
-        deploymentType: 'CloudHub 2.0',
-        version: '3.5.6 Java 11'
-      },
-      {
-        id: 7,
-        name: 'claim-audit-api',
-        type: 'API',
-        requestVolume: 198,
-        responseTime: '156.70ms',
-        errorRate: 3.45,
-        successRate: 96.55,
-        deploymentType: 'CloudHub 2.0',
-        version: '3.9.1 Java 11'
-      }
-    ]
-  };
+ // Sample API data
+const apiData: ApiDataByEnv = {
+  PROD: [
+    {
+      id: 1,
+      name: 'claim-processing-api',
+      type: 'Application',
+      requestVolume: 45821,
+      responseTime: '189.30ms',
+      errorRate: 2.15,
+      successRate: 97.85,
+      deploymentType: 'CloudHub 2.0',
+      version: '4.6.9 Java 17',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 2,
+      name: 'claim-validation-api',
+      type: 'API',
+      requestVolume: 32456,
+      responseTime: '245.60ms',
+      errorRate: 5.20,
+      successRate: 94.80,
+      deploymentType: 'CloudHub 2.0',
+      version: '3.2.1 Java 11',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 3,
+      name: 'claim-eligibility-api',
+      type: 'Application',
+      requestVolume: 28140,
+      responseTime: '156.40ms',
+      errorRate: 1.85,
+      successRate: 98.15,
+      deploymentType: 'CloudHub 2.0',
+      version: '5.1.2 Java 17',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 4,
+      name: 'claim-notification-api',
+      type: 'Application',
+      requestVolume: 19876,
+      responseTime: '312.80ms',
+      errorRate: 8.70,
+      successRate: 91.30,
+      deploymentType: 'CloudHub 2.0',
+      version: '2.8.4 Java 11',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 5,
+      name: 'claim-documents-api',
+      type: 'API',
+      requestVolume: 15432,
+      responseTime: '198.20ms',
+      errorRate: 3.45,
+      successRate: 96.55,
+      deploymentType: 'CloudHub 2.0',
+      version: '4.1.7 Java 17',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 6,
+      name: 'claim-payment-api',
+      type: 'Application',
+      requestVolume: 12675,
+      responseTime: '425.10ms',
+      errorRate: 12.30,
+      successRate: 87.70,
+      deploymentType: 'CloudHub 2.0',
+      version: '3.5.6 Java 11',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 7,
+      name: 'claim-history-api',
+      type: 'API',
+      requestVolume: 9854,
+      responseTime: '167.90ms',
+      errorRate: 0.95,
+      successRate: 99.05,
+      deploymentType: 'CloudHub 2.0',
+      version: '6.0.1 Java 17',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 8,
+      name: 'claim-status-api',
+      type: 'Application',
+      requestVolume: 8765,
+      responseTime: '134.50ms',
+      errorRate: 2.80,
+      successRate: 97.20,
+      deploymentType: 'CloudHub 2.0',
+      version: '4.2.3 Java 17',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 9,
+      name: 'claim-audit-api',
+      type: 'API',
+      requestVolume: 6543,
+      responseTime: '145.20ms',
+      errorRate: 1.25,
+      successRate: 98.75,
+      deploymentType: 'CloudHub 2.0',
+      version: '3.9.1 Java 11',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 10,
+      name: 'claim-reporting-api',
+      type: 'Application',
+      requestVolume: 5432,
+      responseTime: '178.90ms',
+      errorRate: 2.45,
+      successRate: 97.55,
+      deploymentType: 'CloudHub 2.0',
+      version: '5.3.2 Java 17',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 11,
+      name: 'claim-analytics-api',
+      type: 'API',
+      requestVolume: 4321,
+      responseTime: '234.50ms',
+      errorRate: 3.75,
+      successRate: 96.25,
+      deploymentType: 'CloudHub 2.0',
+      version: '2.7.8 Java 11',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 12,
+      name: 'claim-workflow-api',
+      type: 'Application',
+      requestVolume: 3456,
+      responseTime: '167.80ms',
+      errorRate: 1.95,
+      successRate: 98.05,
+      deploymentType: 'CloudHub 2.0',
+      version: '4.8.1 Java 17',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    }
+  ],
+  QA: [
+    {
+      id: 1,
+      name: 'claim-processing-api',
+      type: 'Application',
+      requestVolume: 1250,
+      responseTime: '195.40ms',
+      errorRate: 4.20,
+      successRate: 95.80,
+      deploymentType: 'CloudHub 2.0',
+      version: '4.6.9 Java 17',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 2,
+      name: 'claim-validation-api',
+      type: 'API',
+      requestVolume: 890,
+      responseTime: '278.90ms',
+      errorRate: 7.80,
+      successRate: 92.20,
+      deploymentType: 'CloudHub 2.0',
+      version: '3.2.1 Java 11',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 3,
+      name: 'claim-eligibility-api',
+      type: 'Application',
+      requestVolume: 756,
+      responseTime: '189.60ms',
+      errorRate: 3.15,
+      successRate: 96.85,
+      deploymentType: 'CloudHub 2.0',
+      version: '5.1.2 Java 17',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 4,
+      name: 'claim-notification-api',
+      type: 'Application',
+      requestVolume: 432,
+      responseTime: '298.40ms',
+      errorRate: 6.25,
+      successRate: 93.75,
+      deploymentType: 'CloudHub 2.0',
+      version: '2.8.4 Java 11',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 5,
+      name: 'claim-documents-api',
+      type: 'API',
+      requestVolume: 321,
+      responseTime: '187.30ms',
+      errorRate: 4.85,
+      successRate: 95.15,
+      deploymentType: 'CloudHub 2.0',
+      version: '4.1.7 Java 17',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 6,
+      name: 'claim-payment-api',
+      type: 'Application',
+      requestVolume: 287,
+      responseTime: '412.60ms',
+      errorRate: 8.95,
+      successRate: 91.05,
+      deploymentType: 'CloudHub 2.0',
+      version: '3.5.6 Java 11',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    },
+    {
+      id: 7,
+      name: 'claim-audit-api',
+      type: 'API',
+      requestVolume: 198,
+      responseTime: '156.70ms',
+      errorRate: 3.45,
+      successRate: 96.55,
+      deploymentType: 'CloudHub 2.0',
+      version: '3.9.1 Java 11',
+      memoryUtilization: "26.477437660374804",
+      cpuUtilization: "3.107495178776923",
+      throughput: "0.05138888888888889"
+    }
+  ]
+};
+
 
   // Filter APIs based on comma-separated search query
   const filterApis = useCallback((apis: ApiData[], query: string): ApiData[] => {
@@ -419,6 +482,7 @@ const ClaimApiDashboard: React.FC = () => {
               <p className="text-3xl font-bold text-gray-900">{selectedApi.requestVolume.toLocaleString()}</p>
             </div>
             
+            
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <Clock className="h-8 w-8 text-purple-600 mb-2" />
@@ -444,6 +508,12 @@ const ClaimApiDashboard: React.FC = () => {
               <p className="text-sm font-medium text-gray-500">Success Rate</p>
               <p className={`text-3xl font-bold ${getSuccessRateColor(selectedApi.successRate)}`}>
                 {selectedApi.successRate.toFixed(2)}%
+              </p>
+            </div>
+             </div>
+              <p className="text-sm font-medium text-gray-500">Success Rate</p>
+              <p className={`text-3xl font-bold ${getSuccessRateColor(selectedApi.successRate)}`}>
+                {selectedApi.memoryUtilization}
               </p>
             </div>
           </div>
@@ -674,9 +744,7 @@ const ClaimApiDashboard: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Version
-                    </th>
+                   
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Request Volume
                     </th>
@@ -711,9 +779,7 @@ const ClaimApiDashboard: React.FC = () => {
                           {api.errorRate > 10 ? 'Not Running' : 'Running'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {api.version}
-                      </td>
+                     
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {api.requestVolume.toLocaleString()}
                       </td>
