@@ -510,15 +510,10 @@ const apiData: ApiDataByEnv = {
                 {selectedApi.successRate.toFixed(2)}%
               </p>
             </div>
-             </div>
-              <p className="text-sm font-medium text-gray-500">Success Rate</p>
-              <p className={`text-3xl font-bold ${getSuccessRateColor(selectedApi.successRate)}`}>
-                {selectedApi.memoryUtilization}
-              </p>
-            </div>
+           
           </div>
 
-          {/* Additional Details */}
+         
           <div className="bg-white shadow rounded-lg p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Additional Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
