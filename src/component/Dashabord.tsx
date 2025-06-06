@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ChevronDown, Activity, AlertCircle, CheckCircle, Clock, Server, ArrowLeft, RotateCcw, Search } from 'lucide-react';
-import axios from 'axios';
 
 // TypeScript interfaces
 interface ApiData {
@@ -56,53 +55,10 @@ const API_CONFIG = {
   BASE_URL: 'http://localhost:8081/v1/api',
   HEADERS: {
     'Content-Type': 'application/json',
-    'client_id': '4834',        // Replace with your actual client_id
-    'client_secret': '43434' // Replace with your actual client_secret
+    'client_id': 'your-client-id',        // Replace with your actual client_id
+    'client_secret': 'your-client-secret' // Replace with your actual client_secret
   }
 };
-
-// Create axios instance with default config
-const api = axios.create({
-  baseURL: API_CONFIG.BASE_URL,
-  headers: API_CONFIG.HEADERS,
-  withCredentials: true, // Enable sending cookies in cross-origin requests
-  validateStatus: function (status) {
-    return status >= 200 && status < 500; // Accept all status codes less than 500
-  }
-});
-
-// Add request interceptor to handle CORS
-api.interceptors.request.use(
-  (config) => {
-    // Add CORS headers
-    config.headers['Access-Control-Allow-Origin'] = '*';
-    config.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
-    config.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, client_id, client_secret';
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Add response interceptor to handle errors
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      console.error('Response error:', error.response.data);
-    } else if (error.request) {
-      // The request was made but no response was received
-      console.error('Request error:', error.request);
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      console.error('Error:', error.message);
-    }
-    return Promise.reject(error);
-  }
-);
 
 const ClaimApiDashboard: React.FC = () => {
   const [environments, setEnvironments] = useState<Environment[]>([]);
@@ -133,7 +89,7 @@ const ClaimApiDashboard: React.FC = () => {
   const getTimeRange = useCallback((timeFilter: TimeFilter) => {
     const now = new Date();
     const timeTo = now.toISOString();
-    
+   
     let hoursBack = 1;
     switch (timeFilter) {
       case '2h':
@@ -148,7 +104,7 @@ const ClaimApiDashboard: React.FC = () => {
       default:
         hoursBack = 1;
     }
-    
+   
     const timeFrom = new Date(now.getTime() - hoursBack * 60 * 60 * 1000).toISOString();
     return { timeFrom, timeTo };
   }, []);
@@ -157,13 +113,21 @@ const ClaimApiDashboard: React.FC = () => {
   const fetchEnvironments = useCallback(async () => {
     try {
       setIsLoadingEnvironments(true);
-      const response = await api.post('/environments', {
-        action: "Clear"
+      const response = await fetch(`${API_CONFIG.BASE_URL}/environments`, {
+        method: 'POST',
+        headers: API_CONFIG.HEADERS,
+        body: JSON.stringify({
+          action: "Clear"
+        })
       });
 
-      const environments: Environment[] = response.data;
+      if (!response.ok) {
+        throw new Error('Failed to fetch environments');
+      }
+
+      const environments: Environment[] = await response.json();
       setEnvironments(environments);
-      
+     
       // Set default environment (PROD if available, otherwise first one)
       const prodEnv = environments.find(env => env.name === 'PROD');
       const defaultEnv = prodEnv || environments[0];
@@ -188,7 +152,7 @@ const ClaimApiDashboard: React.FC = () => {
   const convertToApiData = useCallback((entity: ApiEntity, index: number): ApiData => {
     const errorRate = entity.reqVolume > 0 ? (entity.errorVolume / entity.reqVolume) * 100 : 0;
     const successRate = 100 - errorRate;
-    
+   
     return {
       id: index + 1,
       name: entity.appName,
@@ -205,12 +169,12 @@ const ClaimApiDashboard: React.FC = () => {
   // API call function for fetching metrics
   const performSearch = useCallback(async (query: string, timeFilter: TimeFilter, environment: Environment) => {
     if (!environment) return;
-    
+   
     setIsSearching(true);
-    
+   
     try {
       const { timeFrom, timeTo } = getTimeRange(timeFilter);
-      
+     
       const requestBody = {
         request: {
           envId: environment.envId,
@@ -222,13 +186,21 @@ const ClaimApiDashboard: React.FC = () => {
         action: "clear"
       };
 
-      const response = await api.post('/metrics', requestBody);
-      const data: MetricsResponse = response.data;
-      
-      const convertedData = data.response.entities.map((entity, index) => 
+      const response = await fetch(`${API_CONFIG.BASE_URL}/metrics`, {
+        method: 'POST',
+        headers: API_CONFIG.HEADERS,
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch metrics');
+      }
+
+      const data: MetricsResponse = await response.json();
+      const convertedData = data.response.entities.map((entity, index) =>
         convertToApiData(entity, index)
       );
-      
+     
       setApiData(convertedData);
       setLastUpdated(new Date().toLocaleTimeString());
     } catch (error) {
@@ -244,27 +216,27 @@ const ClaimApiDashboard: React.FC = () => {
   // Filter APIs based on comma-separated search query
   const filterApis = useCallback((apis: ApiData[], query: string): ApiData[] => {
     if (!query.trim()) return apis;
-    
+   
     const searchTerms = query.toLowerCase().split(',').map(term => term.trim()).filter(term => term);
-    
+   
     if (searchTerms.length === 0) return apis;
-    
-    return apis.filter(api => 
+   
+    return apis.filter(api =>
       searchTerms.some(term => api.name.toLowerCase().includes(term))
     );
   }, []);
 
   const filteredData: ApiData[] = useMemo(() => filterApis(apiData, searchQuery), [apiData, searchQuery, filterApis]);
-  
+ 
   // Calculate overall metrics based on filtered data
   const { totalRequests, totalEntities, entitiesWithErrors, overallErrorRate } = useMemo(() => {
     const total = filteredData.reduce((sum: number, api: ApiData) => sum + api.requestVolume, 0);
     const entities = filteredData.length;
     const withErrors = filteredData.filter((api: ApiData) => api.errorRate > 0).length;
-    const errorRate = entities > 0 
-      ? filteredData.reduce((sum: number, api: ApiData) => sum + (api.errorRate * api.requestVolume), 0) / total 
+    const errorRate = entities > 0
+      ? filteredData.reduce((sum: number, api: ApiData) => sum + (api.errorRate * api.requestVolume), 0) / total
       : 0;
-    
+   
     return {
       totalRequests: total,
       totalEntities: entities,
@@ -287,7 +259,7 @@ const ClaimApiDashboard: React.FC = () => {
   // Auto-refresh functionality
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+   
     if (autoRefresh) {
       interval = setInterval(() => {
         setLastUpdated(new Date().toLocaleTimeString());
@@ -320,7 +292,7 @@ const ClaimApiDashboard: React.FC = () => {
   }, []);
 
   const handleSearchButtonClick = useCallback((): void => {
-    if (searchQuery.trim() && selectedEnv) {
+    if (searchQuery.trim()) {
       performSearch(searchQuery, selectedTimeFilter, selectedEnv);
     }
   }, [searchQuery, selectedTimeFilter, selectedEnv, performSearch]);
@@ -340,7 +312,7 @@ const ClaimApiDashboard: React.FC = () => {
   const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (searchQuery.trim() && selectedEnv) {
+      if (searchQuery.trim()) {
         performSearch(searchQuery, selectedTimeFilter, selectedEnv);
       }
     }
@@ -380,7 +352,7 @@ const ClaimApiDashboard: React.FC = () => {
                   API Details - {selectedApi.name}
                 </h1>
               </div>
-              
+             
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-500">Environment: {selectedEnv?.name}</span>
               </div>
@@ -396,8 +368,8 @@ const ClaimApiDashboard: React.FC = () => {
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedApi.name}</h2>
                 <div className="flex items-center space-x-4">
                   <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                    selectedApi.type === 'Application' 
-                      ? 'bg-blue-100 text-blue-800' 
+                    selectedApi.type === 'Application'
+                      ? 'bg-blue-100 text-blue-800'
                       : 'bg-green-100 text-green-800'
                   }`}>
                     {selectedApi.type}
@@ -418,7 +390,7 @@ const ClaimApiDashboard: React.FC = () => {
               <p className="text-sm font-medium text-gray-500">Request Volume</p>
               <p className="text-3xl font-bold text-gray-900">{selectedApi.requestVolume.toLocaleString()}</p>
             </div>
-            
+           
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <Clock className="h-8 w-8 text-purple-600 mb-2" />
@@ -426,7 +398,7 @@ const ClaimApiDashboard: React.FC = () => {
               <p className="text-sm font-medium text-gray-500">Response Time (p99)</p>
               <p className="text-3xl font-bold text-gray-900">{selectedApi.responseTime}</p>
             </div>
-            
+           
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <AlertCircle className={`h-8 w-8 mb-2 ${selectedApi.errorRate < 2 ? 'text-green-600' : selectedApi.errorRate < 5 ? 'text-yellow-600' : 'text-red-600'}`} />
@@ -436,7 +408,7 @@ const ClaimApiDashboard: React.FC = () => {
                 {selectedApi.errorRate.toFixed(2)}%
               </p>
             </div>
-            
+           
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <CheckCircle className={`h-8 w-8 mb-2 ${selectedApi.successRate >= 98 ? 'text-green-600' : selectedApi.successRate >= 95 ? 'text-yellow-600' : 'text-red-600'}`} />
@@ -494,7 +466,7 @@ const ClaimApiDashboard: React.FC = () => {
               <Activity className="h-8 w-8 text-blue-600 mr-3" />
               <h1 className="text-xl font-semibold text-gray-900">Monitoring Dashboard</h1>
             </div>
-            
+           
             <div className="flex items-center space-x-4">
               {/* Auto Refresh Toggle */}
               <div className="flex items-center space-x-2">
@@ -536,7 +508,7 @@ const ClaimApiDashboard: React.FC = () => {
                   {isLoadingEnvironments ? 'Loading...' : selectedEnv?.name || 'Select Environment'}
                   <ChevronDown className="ml-2 h-4 w-4" />
                 </button>
-                
+               
                 {isEnvDropdownOpen && !isLoadingEnvironments && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
                     <div className="py-1">
@@ -592,7 +564,7 @@ const ClaimApiDashboard: React.FC = () => {
                 {timeFilterOptions.find(opt => opt.value === selectedTimeFilter)?.label}
                 <ChevronDown className="ml-2 h-4 w-4" />
               </button>
-              
+             
               {isTimeFilterDropdownOpen && (
                 <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border">
                   <div className="py-1">
@@ -635,7 +607,7 @@ const ClaimApiDashboard: React.FC = () => {
                 </div>
               )}
             </div>
-            
+           
             {/* Search Button */}
             <button
               onClick={handleSearchButtonClick}
@@ -645,7 +617,7 @@ const ClaimApiDashboard: React.FC = () => {
               <Search className="w-4 h-4 mr-2" />
               Search
             </button>
-            
+           
             {searchQuery && (
               <button
                 onClick={handleClearSearch}
@@ -655,7 +627,7 @@ const ClaimApiDashboard: React.FC = () => {
               </button>
             )}
           </div>
-          
+         
           {/* Search Info */}
           <div className="mt-2 flex justify-between items-center text-sm text-gray-600">
             {searchQuery && (
@@ -678,7 +650,7 @@ const ClaimApiDashboard: React.FC = () => {
               <p className="text-sm font-medium text-gray-500">Total Entities</p>
               <p className="text-3xl font-bold text-gray-900">{totalEntities}</p>
             </div>
-            
+           
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <AlertCircle className="h-8 w-8 text-red-600 mb-2" />
@@ -686,7 +658,7 @@ const ClaimApiDashboard: React.FC = () => {
               <p className="text-sm font-medium text-gray-500">Entities with Errors</p>
               <p className="text-3xl font-bold text-gray-900">{entitiesWithErrors}</p>
             </div>
-            
+           
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <Activity className="h-8 w-8 text-green-600 mb-2" />
@@ -694,7 +666,7 @@ const ClaimApiDashboard: React.FC = () => {
               <p className="text-sm font-medium text-gray-500">Total Requests</p>
               <p className="text-3xl font-bold text-gray-900">{totalRequests.toLocaleString()}</p>
             </div>
-            
+           
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <CheckCircle className="h-8 w-8 text-orange-600 mb-2" />
@@ -713,7 +685,7 @@ const ClaimApiDashboard: React.FC = () => {
               <span className="text-sm text-gray-500">No APIs match your search criteria</span>
             )}
           </div>
-          
+         
           <div className="overflow-x-auto">
             {filteredData.length > 0 ? (
               <table className="min-w-full divide-y divide-gray-200">
@@ -768,8 +740,8 @@ const ClaimApiDashboard: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={`font-medium ${
-                          api.errorRate > 10 ? 'text-red-600' : 
-                          api.errorRate > 5 ? 'text-yellow-600' : 
+                          api.errorRate > 10 ? 'text-red-600' :
+                          api.errorRate > 5 ? 'text-yellow-600' :
                           'text-green-600'
                         }`}>
                           {api.errorRate.toFixed(2)}%
