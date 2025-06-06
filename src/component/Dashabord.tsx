@@ -3,72 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronDown, Activity, AlertCircle, CheckCircle, Clock, Server, ArrowLeft, RotateCcw, Search, Loader2 } from 'lucide-react';
 
-// Mock axios for demo - replace with actual axios import in your project
-const axios = {
-  create: (config) => ({
-    post: async (url, data) => {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock responses based on URL
-      if (url.includes('/environments')) {
-        return {
-          data: [
-            { envId: "prod-123", name: "PROD", orgId: "org-456" },
-            { envId: "qa-789", name: "QA", orgId: "org-456" },
-            { envId: "dev-101", name: "DEV", orgId: "org-456" }
-          ]
-        };
-      }
-      
-      if (url.includes('/metrics')) {
-        const { request } = data;
-        const mockEntities = [
-          {
-            appName: `${request.appName || 'claim'}-processing-api`,
-            reqVolume: Math.floor(Math.random() * 10000) + 1000,
-            errorVolume: Math.floor(Math.random() * 100),
-            status: "Running",
-            deploymentType: "Kubernetes",
-            responseTime: Math.random() * 500 + 50,
-            memoryUtil: "75%",
-            throughput: "1200 req/min",
-            cpuUtil: "45%",
-            version: "v2.1.0",
-            lastUpdateTime: Date.now(),
-            createTime: Date.now() - 86400000
-          },
-          {
-            appName: `${request.appName || 'claim'}-validation-service`,
-            reqVolume: Math.floor(Math.random() * 8000) + 800,
-            errorVolume: Math.floor(Math.random() * 50),
-            status: "Running",
-            deploymentType: "Docker",
-            responseTime: Math.random() * 300 + 30,
-            memoryUtil: "60%",
-            throughput: "900 req/min",
-            cpuUtil: "35%",
-            version: "v1.8.2",
-            lastUpdateTime: Date.now(),
-            createTime: Date.now() - 172800000
-          }
-        ];
-        
-        return {
-          data: {
-            response: {
-              envId: request.envId,
-              orgId: request.orgId,
-              timeFrom: request.timeFrom,
-              timeTo: request.timeTo,
-              entities: mockEntities
-            }
-          }
-        };
-      }
-    }
-  })
-};
+// Real axios import - make sure to install: npm install axios
+import axios from 'axios';
 
 // TypeScript interfaces
 interface ApiData {
@@ -104,25 +40,115 @@ interface ApiEntity {
   createTime: number;
 }
 
-type ViewMode = 'dashboard' | 'details';
-type TimeFilter = '1h' | '2h' | '12h' | '24h';
+// Development mode toggle - set to false for production
+const ENABLE_MOCK_MODE = false; // Set to true to use mock data during development
 
-// API Configuration
+// Mock data functions for development
+const getMockEnvironments = () => [
+  { envId: "prod-123", name: "PROD", orgId: "org-456" },
+  { envId: "qa-789", name: "QA", orgId: "org-456" },
+  { envId: "dev-101", name: "DEV", orgId: "org-456" }
+];
+
+const getMockMetrics = (request: any) => ({
+  response: {
+    envId: request.envId,
+    orgId: request.orgId,
+    timeFrom: request.timeFrom,
+    timeTo: request.timeTo,
+    entities: [
+      {
+        appName: `${request.appName || 'claim'}-processing-api`,
+        reqVolume: Math.floor(Math.random() * 10000) + 1000,
+        errorVolume: Math.floor(Math.random() * 100),
+        status: "Running",
+        deploymentType: "Kubernetes",
+        responseTime: Math.random() * 500 + 50,
+        memoryUtil: "75%",
+        throughput: "1200 req/min",
+        cpuUtil: "45%",
+        version: "v2.1.0",
+        lastUpdateTime: Date.now(),
+        createTime: Date.now() - 86400000
+      },
+      {
+        appName: `${request.appName || 'claim'}-validation-service`,
+        reqVolume: Math.floor(Math.random() * 8000) + 800,
+        errorVolume: Math.floor(Math.random() * 50),
+        status: "Running",
+        deploymentType: "Docker",
+        responseTime: Math.random() * 300 + 30,
+        memoryUtil: "60%",
+        throughput: "900 req/min",
+        cpuUtil: "35%",
+        version: "v1.8.2",
+        lastUpdateTime: Date.now(),
+        createTime: Date.now() - 172800000
+      }
+    ]
+  }
+});
+
+// API Configuration - Update these values with your actual API details
 const API_CONFIG = {
-  BASE_URL: 'http://localhost:8081/v1/api',
+  BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/v1/api',
   HEADERS: {
     'Content-Type': 'application/json',
-    'client_id': 'demo-client-id',
-    'client_secret': 'demo-client-secret'
-  }
+    'client_id': process.env.NEXT_PUBLIC_CLIENT_ID || 'your-client-id',
+    'client_secret': process.env.NEXT_PUBLIC_CLIENT_SECRET || 'your-client-secret',
+    // Add any additional headers your API requires
+    // 'Authorization': `Bearer ${token}`,
+    // 'X-API-Key': 'your-api-key'
+  },
+  TIMEOUT: 30000
 };
 
-// Create axios instance
+// Create axios instance with proper configuration
 const apiClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
   headers: API_CONFIG.HEADERS,
-  timeout: 30000
+  timeout: API_CONFIG.TIMEOUT,
+  // Enable CORS if needed
+  withCredentials: false,
 });
+
+// Add request interceptor for debugging
+apiClient.interceptors.request.use(
+  (config) => {
+    console.log('🚀 API Request:', {
+      url: config.url,
+      method: config.method,
+      data: config.data,
+      headers: config.headers
+    });
+    return config;
+  },
+  (error) => {
+    console.error('❌ Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor for debugging
+apiClient.interceptors.response.use(
+  (response) => {
+    console.log('✅ API Response:', {
+      url: response.config.url,
+      status: response.status,
+      data: response.data
+    });
+    return response;
+  },
+  (error) => {
+    console.error('❌ Response Error:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data
+    });
+    return Promise.reject(error);
+  }
+);
 
 // Custom hooks for better state management
 const useEnvironments = () => {
@@ -220,16 +246,42 @@ const useApiMetrics = () => {
         action: "clear"
       };
 
-      const response = await apiClient.post('/metrics', requestBody);
+      let responseData;
       
-      const convertedData = response.data.response.entities.map((entity: ApiEntity, index: number) =>
+      if (ENABLE_MOCK_MODE) {
+        // Use mock data in development
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
+        responseData = getMockMetrics(requestBody.request);
+      } else {
+        const response = await apiClient.post('/metrics', requestBody);
+        responseData = response.data;
+      }
+      
+      const convertedData = responseData.response.entities.map((entity: ApiEntity, index: number) =>
         convertToApiData(entity, index)
       );
       
       setApiData(convertedData);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching metrics:', err);
-      setError('Failed to fetch API metrics');
+      
+      // Provide detailed error information
+      let errorMessage = 'Failed to fetch API metrics';
+      if (err.code === 'ECONNREFUSED') {
+        errorMessage = 'Cannot connect to API server. Please check if the server is running.';
+      } else if (err.response?.status === 401) {
+        errorMessage = 'Authentication failed. Please check your client credentials.';
+      } else if (err.response?.status === 403) {
+        errorMessage = 'Access forbidden. Please check your permissions.';
+      } else if (err.response?.status === 404) {
+        errorMessage = 'API endpoint not found. Please check the API URL.';
+      } else if (err.response?.status >= 500) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (err.code === 'ENOTFOUND') {
+        errorMessage = 'DNS resolution failed. Please check the API hostname.';
+      }
+      
+      setError(errorMessage);
       setApiData([]);
     } finally {
       setLoading(false);
@@ -533,8 +585,8 @@ const ClaimApiDashboard: React.FC = () => {
   const [selectedEnv, setSelectedEnv] = useState<Environment | null>(null);
 
   // Custom hooks
-  const { environments, loading: envLoading } = useEnvironments();
-  const { apiData, loading: metricsLoading, fetchMetrics, clearData } = useApiMetrics();
+  const { environments, loading: envLoading, error: envError } = useEnvironments();
+  const { apiData, loading: metricsLoading, error: metricsError, fetchMetrics, clearData } = useApiMetrics();
 
   // Set default environment when environments are loaded
   useEffect(() => {
@@ -754,7 +806,57 @@ const ClaimApiDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Search Controls */}
+        {/* Error Display */}
+        {(envError || metricsError) && (
+          <div className="mb-6">
+            {envError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center">
+                  <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+                  <h3 className="text-sm font-medium text-red-800">Environment Loading Error</h3>
+                </div>
+                <p className="mt-2 text-sm text-red-700">{envError}</p>
+                {ENABLE_MOCK_MODE && (
+                  <p className="mt-1 text-xs text-red-600">Currently using mock data for development.</p>
+                )}
+              </div>
+            )}
+            {metricsError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+                  <h3 className="text-sm font-medium text-red-800">API Call Failed</h3>
+                </div>
+                <p className="mt-2 text-sm text-red-700">{metricsError}</p>
+                <div className="mt-3">
+                  <button
+                    onClick={() => {
+                      if (searchQuery.trim() && selectedEnv) {
+                        fetchMetrics(searchQuery, selectedTimeFilter, selectedEnv);
+                      }
+                    }}
+                    className="text-sm bg-red-100 text-red-800 px-3 py-1 rounded hover:bg-red-200 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Development Mode Indicator */}
+        {ENABLE_MOCK_MODE && (
+          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-yellow-400 mr-2" />
+              <h3 className="text-sm font-medium text-yellow-800">Development Mode</h3>
+            </div>
+            <p className="mt-2 text-sm text-yellow-700">
+              Using mock data. Set ENABLE_MOCK_MODE to false to use real API calls.
+            </p>
+          </div>
+        )}
         <div className="mb-6">
           <div className="flex gap-2 mb-2">
             <TimeFilterSelector
