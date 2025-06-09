@@ -14,21 +14,55 @@ interface ApiData {
   successRate: number;
   deploymentType: string;
   version: string;
-  memoryUtilization: string;
-  cpuUtilization: string;
+}
+
+interface Environment {
+  envId: string;
+  name: string;
+  orgId: string;
+}
+
+interface ApiEntity {
+  appName: string;
+  reqVolume: number;
+  errorVolume: number;
+  status: string;
+  deploymentType: string;
+  responseTime: number;
+  memoryUtil: string;
   throughput: string;
+  cpuUtil: string;
+  version: string;
+  lastUpdateTime: number;
+  createTime: number;
 }
 
-interface ApiDataByEnv {
-  PROD: ApiData[];
-  QA: ApiData[];
+interface MetricsResponse {
+  response: {
+    envId: string;
+    orgId: string;
+    timeFrom: string;
+    timeTo: string;
+    entities: ApiEntity[];
+  };
 }
 
-type Environment = 'PROD' | 'QA';
 type ViewMode = 'dashboard' | 'details';
+type TimeFilter = '1h' | '2h' | '12h' | '24h';
+
+// API Configuration - Update these values as needed
+const API_CONFIG = {
+  BASE_URL: 'http://localhost:8081/v1/api',
+  HEADERS: {
+    'Content-Type': 'application/json',
+    'client_id': 'your-client-id',       
+    'client_secret': 'your-client-secret'
+  }
+};
 
 const ClaimApiDashboard: React.FC = () => {
-  const [selectedEnv, setSelectedEnv] = useState<Environment>('PROD');
+  const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [selectedEnv, setSelectedEnv] = useState<Environment | null>(null);
   const [selectedApi, setSelectedApi] = useState<ApiData | null>(null);
   const [isEnvDropdownOpen, setIsEnvDropdownOpen] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
@@ -36,309 +70,173 @@ const ClaimApiDashboard: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [isMounted, setIsMounted] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isTimeFilterDropdownOpen, setIsTimeFilterDropdownOpen] = useState<boolean>(false);
+  const [selectedTimeFilter, setSelectedTimeFilter] = useState<TimeFilter>('1h');
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [apiData, setApiData] = useState<ApiData[]>([]);
+  const [isLoadingEnvironments, setIsLoadingEnvironments] = useState<boolean>(true);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Sample API data
- // Sample API data
-const apiData: ApiDataByEnv = {
-  PROD: [
-    {
-      id: 1,
-      name: 'claim-processing-api',
-      type: 'Application',
-      requestVolume: 45821,
-      responseTime: '189.30ms',
-      errorRate: 2.15,
-      successRate: 97.85,
-      deploymentType: 'CloudHub 2.0',
-      version: '4.6.9 Java 17',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 2,
-      name: 'claim-validation-api',
-      type: 'API',
-      requestVolume: 32456,
-      responseTime: '245.60ms',
-      errorRate: 5.20,
-      successRate: 94.80,
-      deploymentType: 'CloudHub 2.0',
-      version: '3.2.1 Java 11',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 3,
-      name: 'claim-eligibility-api',
-      type: 'Application',
-      requestVolume: 28140,
-      responseTime: '156.40ms',
-      errorRate: 1.85,
-      successRate: 98.15,
-      deploymentType: 'CloudHub 2.0',
-      version: '5.1.2 Java 17',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 4,
-      name: 'claim-notification-api',
-      type: 'Application',
-      requestVolume: 19876,
-      responseTime: '312.80ms',
-      errorRate: 8.70,
-      successRate: 91.30,
-      deploymentType: 'CloudHub 2.0',
-      version: '2.8.4 Java 11',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 5,
-      name: 'claim-documents-api',
-      type: 'API',
-      requestVolume: 15432,
-      responseTime: '198.20ms',
-      errorRate: 3.45,
-      successRate: 96.55,
-      deploymentType: 'CloudHub 2.0',
-      version: '4.1.7 Java 17',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 6,
-      name: 'claim-payment-api',
-      type: 'Application',
-      requestVolume: 12675,
-      responseTime: '425.10ms',
-      errorRate: 12.30,
-      successRate: 87.70,
-      deploymentType: 'CloudHub 2.0',
-      version: '3.5.6 Java 11',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 7,
-      name: 'claim-history-api',
-      type: 'API',
-      requestVolume: 9854,
-      responseTime: '167.90ms',
-      errorRate: 0.95,
-      successRate: 99.05,
-      deploymentType: 'CloudHub 2.0',
-      version: '6.0.1 Java 17',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 8,
-      name: 'claim-status-api',
-      type: 'Application',
-      requestVolume: 8765,
-      responseTime: '134.50ms',
-      errorRate: 2.80,
-      successRate: 97.20,
-      deploymentType: 'CloudHub 2.0',
-      version: '4.2.3 Java 17',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 9,
-      name: 'claim-audit-api',
-      type: 'API',
-      requestVolume: 6543,
-      responseTime: '145.20ms',
-      errorRate: 1.25,
-      successRate: 98.75,
-      deploymentType: 'CloudHub 2.0',
-      version: '3.9.1 Java 11',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 10,
-      name: 'claim-reporting-api',
-      type: 'Application',
-      requestVolume: 5432,
-      responseTime: '178.90ms',
-      errorRate: 2.45,
-      successRate: 97.55,
-      deploymentType: 'CloudHub 2.0',
-      version: '5.3.2 Java 17',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 11,
-      name: 'claim-analytics-api',
-      type: 'API',
-      requestVolume: 4321,
-      responseTime: '234.50ms',
-      errorRate: 3.75,
-      successRate: 96.25,
-      deploymentType: 'CloudHub 2.0',
-      version: '2.7.8 Java 11',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 12,
-      name: 'claim-workflow-api',
-      type: 'Application',
-      requestVolume: 3456,
-      responseTime: '167.80ms',
-      errorRate: 1.95,
-      successRate: 98.05,
-      deploymentType: 'CloudHub 2.0',
-      version: '4.8.1 Java 17',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    }
-  ],
-  QA: [
-    {
-      id: 1,
-      name: 'claim-processing-api',
-      type: 'Application',
-      requestVolume: 1250,
-      responseTime: '195.40ms',
-      errorRate: 4.20,
-      successRate: 95.80,
-      deploymentType: 'CloudHub 2.0',
-      version: '4.6.9 Java 17',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 2,
-      name: 'claim-validation-api',
-      type: 'API',
-      requestVolume: 890,
-      responseTime: '278.90ms',
-      errorRate: 7.80,
-      successRate: 92.20,
-      deploymentType: 'CloudHub 2.0',
-      version: '3.2.1 Java 11',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 3,
-      name: 'claim-eligibility-api',
-      type: 'Application',
-      requestVolume: 756,
-      responseTime: '189.60ms',
-      errorRate: 3.15,
-      successRate: 96.85,
-      deploymentType: 'CloudHub 2.0',
-      version: '5.1.2 Java 17',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 4,
-      name: 'claim-notification-api',
-      type: 'Application',
-      requestVolume: 432,
-      responseTime: '298.40ms',
-      errorRate: 6.25,
-      successRate: 93.75,
-      deploymentType: 'CloudHub 2.0',
-      version: '2.8.4 Java 11',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 5,
-      name: 'claim-documents-api',
-      type: 'API',
-      requestVolume: 321,
-      responseTime: '187.30ms',
-      errorRate: 4.85,
-      successRate: 95.15,
-      deploymentType: 'CloudHub 2.0',
-      version: '4.1.7 Java 17',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 6,
-      name: 'claim-payment-api',
-      type: 'Application',
-      requestVolume: 287,
-      responseTime: '412.60ms',
-      errorRate: 8.95,
-      successRate: 91.05,
-      deploymentType: 'CloudHub 2.0',
-      version: '3.5.6 Java 11',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    },
-    {
-      id: 7,
-      name: 'claim-audit-api',
-      type: 'API',
-      requestVolume: 198,
-      responseTime: '156.70ms',
-      errorRate: 3.45,
-      successRate: 96.55,
-      deploymentType: 'CloudHub 2.0',
-      version: '3.9.1 Java 11',
-      memoryUtilization: "26.477437660374804",
-      cpuUtilization: "3.107495178776923",
-      throughput: "0.05138888888888889"
-    }
-  ]
-};
+  // Time filter options
+  const timeFilterOptions = [
+    { value: '1h' as TimeFilter, label: 'Last 1 hour' },
+    { value: '2h' as TimeFilter, label: 'Last 2 hours' },
+    { value: '12h' as TimeFilter, label: 'Last 12 hours' },
+    { value: '24h' as TimeFilter, label: 'Last 24 hours' }
+  ];
 
+  // Calculate time range based on filter
+  const getTimeRange = useCallback((timeFilter: TimeFilter) => {
+    const now = new Date();
+    const timeTo = now.toISOString();
+   
+    let hoursBack = 1;
+    switch (timeFilter) {
+      case '2h':
+        hoursBack = 2;
+        break;
+      case '12h':
+        hoursBack = 12;
+        break;
+      case '24h':
+        hoursBack = 24;
+        break;
+      default:
+        hoursBack = 1;
+    }
+   
+    const timeFrom = new Date(now.getTime() - hoursBack * 60 * 60 * 1000).toISOString();
+    return { timeFrom, timeTo };
+  }, []);
+
+  // Fetch environments from API
+  const fetchEnvironments = useCallback(async () => {
+    try {
+      setIsLoadingEnvironments(true);
+      const response = await fetch(`${API_CONFIG.BASE_URL}/environments`, {
+        method: 'POST',
+        headers: API_CONFIG.HEADERS,
+        body: JSON.stringify({
+          action: "Clear"
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch environments');
+      }
+
+      const environments: Environment[] = await response.json();
+      setEnvironments(environments);
+     
+      // Set default environment (PROD if available, otherwise first one)
+      const prodEnv = environments.find(env => env.name === 'PROD');
+      const defaultEnv = prodEnv || environments[0];
+      if (defaultEnv) {
+        setSelectedEnv(defaultEnv);
+      }
+    } catch (error) {
+      console.error('Error fetching environments:', error);
+      // Fallback to mock data in case of error
+      const fallbackEnvs: Environment[] = [
+        { envId: "prod-id", name: "PROD", orgId: "org-id" },
+        { envId: "qa-id", name: "QA", orgId: "org-id" }
+      ];
+      setEnvironments(fallbackEnvs);
+      setSelectedEnv(fallbackEnvs[0]);
+    } finally {
+      setIsLoadingEnvironments(false);
+    }
+  }, []);
+
+  // Convert API entity to internal format
+  const convertToApiData = useCallback((entity: ApiEntity, index: number): ApiData => {
+    const errorRate = entity.reqVolume > 0 ? (entity.errorVolume / entity.reqVolume) * 100 : 0;
+    const successRate = 100 - errorRate;
+   
+    return {
+      id: index + 1,
+      name: entity.appName,
+      type: 'Application', // Could be determined by some logic
+      requestVolume: entity.reqVolume,
+      responseTime: entity.responseTime,
+      errorRate,
+      successRate,
+      deploymentType: entity.deploymentType,
+      version: entity.version
+    };
+  }, []);
+
+  // API call function for fetching metrics
+  const performSearch = useCallback(async (query: string, timeFilter: TimeFilter, environment: Environment) => {
+    if (!environment) return;
+   
+    setIsSearching(true);
+   
+    try {
+      const { timeFrom, timeTo } = getTimeRange(timeFilter);
+     
+      const requestBody = {
+        request: {
+          envId: environment.envId,
+          orgId: environment.orgId,
+          timeFrom,
+          timeTo,
+          appName: query.trim()
+        },
+        action: "clear"
+      };
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}/metrics`, {
+        method: 'POST',
+        headers: API_CONFIG.HEADERS,
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch metrics');
+      }
+
+      const data: MetricsResponse = await response.json();
+      const convertedData = data.response.entities.map((entity, index) =>
+        convertToApiData(entity, index)
+      );
+     
+      setApiData(convertedData);
+      setLastUpdated(new Date().toLocaleTimeString());
+    } catch (error) {
+      console.error('Error fetching metrics:', error);
+      setApiData([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [getTimeRange, convertToApiData]);
+
+  // Remove auto-search - only search when button is clicked
 
   // Filter APIs based on comma-separated search query
   const filterApis = useCallback((apis: ApiData[], query: string): ApiData[] => {
     if (!query.trim()) return apis;
-    
+   
     const searchTerms = query.toLowerCase().split(',').map(term => term.trim()).filter(term => term);
-    
+   
     if (searchTerms.length === 0) return apis;
-    
-    return apis.filter(api => 
+   
+    return apis.filter(api =>
       searchTerms.some(term => api.name.toLowerCase().includes(term))
     );
   }, []);
 
-  const currentData: ApiData[] = useMemo(() => apiData[selectedEnv], [selectedEnv, apiData]);
-  const filteredData: ApiData[] = useMemo(() => filterApis(currentData, searchQuery), [currentData, searchQuery, filterApis]);
-  
+  const filteredData: ApiData[] = useMemo(() => filterApis(apiData, searchQuery), [apiData, searchQuery, filterApis]);
+ 
   // Calculate overall metrics based on filtered data
   const { totalRequests, totalEntities, entitiesWithErrors, overallErrorRate } = useMemo(() => {
     const total = filteredData.reduce((sum: number, api: ApiData) => sum + api.requestVolume, 0);
     const entities = filteredData.length;
     const withErrors = filteredData.filter((api: ApiData) => api.errorRate > 0).length;
-    const errorRate = entities > 0 
-      ? filteredData.reduce((sum: number, api: ApiData) => sum + (api.errorRate * api.requestVolume), 0) / total 
+    const errorRate = entities > 0
+      ? filteredData.reduce((sum: number, api: ApiData) => sum + (api.errorRate * api.requestVolume), 0) / total
       : 0;
-    
+   
     return {
       totalRequests: total,
       totalEntities: entities,
@@ -346,6 +244,11 @@ const apiData: ApiDataByEnv = {
       overallErrorRate: errorRate
     };
   }, [filteredData]);
+
+  // Fetch environments on component mount
+  useEffect(() => {
+    fetchEnvironments();
+  }, [fetchEnvironments]);
 
   // Initialize time after component mounts to avoid hydration mismatch
   useEffect(() => {
@@ -356,7 +259,7 @@ const apiData: ApiDataByEnv = {
   // Auto-refresh functionality
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+   
     if (autoRefresh) {
       interval = setInterval(() => {
         setLastUpdated(new Date().toLocaleTimeString());
@@ -388,10 +291,15 @@ const apiData: ApiDataByEnv = {
     setSearchQuery(e.target.value);
   }, []);
 
-  const handleSearch = useCallback((): void => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
+  const handleSearchButtonClick = useCallback((): void => {
+    if (searchQuery.trim()) {
+      performSearch(searchQuery, selectedTimeFilter, selectedEnv);
     }
+  }, [searchQuery, selectedTimeFilter, selectedEnv, performSearch]);
+
+  const handleTimeFilterSelect = useCallback((timeFilter: TimeFilter): void => {
+    setSelectedTimeFilter(timeFilter);
+    setIsTimeFilterDropdownOpen(false);
   }, []);
 
   const handleClearSearch = useCallback((): void => {
@@ -404,9 +312,11 @@ const apiData: ApiDataByEnv = {
   const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleSearch();
+      if (searchQuery.trim()) {
+        performSearch(searchQuery, selectedTimeFilter, selectedEnv);
+      }
     }
-  }, [handleSearch]);
+  }, [searchQuery, selectedTimeFilter, selectedEnv, performSearch]);
 
   const getErrorRateColor = (errorRate: number): string => {
     if (errorRate < 2) return 'text-green-600';
@@ -442,9 +352,9 @@ const apiData: ApiDataByEnv = {
                   API Details - {selectedApi.name}
                 </h1>
               </div>
-              
+             
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-500">Environment: {selectedEnv}</span>
+                <span className="text-sm text-gray-500">Environment: {selectedEnv?.name}</span>
               </div>
             </div>
           </div>
@@ -458,14 +368,14 @@ const apiData: ApiDataByEnv = {
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedApi.name}</h2>
                 <div className="flex items-center space-x-4">
                   <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                    selectedApi.type === 'Application' 
-                      ? 'bg-blue-100 text-blue-800' 
+                    selectedApi.type === 'Application'
+                      ? 'bg-blue-100 text-blue-800'
                       : 'bg-green-100 text-green-800'
                   }`}>
                     {selectedApi.type}
                   </span>
                   <span className="text-sm text-gray-500">ID: {selectedApi.id}</span>
-                  <span className="text-sm text-gray-500">Environment: {selectedEnv}</span>
+                  <span className="text-sm text-gray-500">Environment: {selectedEnv?.name}</span>
                 </div>
               </div>
             </div>
@@ -480,7 +390,7 @@ const apiData: ApiDataByEnv = {
               <p className="text-sm font-medium text-gray-500">Request Volume</p>
               <p className="text-3xl font-bold text-gray-900">{selectedApi.requestVolume.toLocaleString()}</p>
             </div>
-            
+           
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <Clock className="h-8 w-8 text-purple-600 mb-2" />
@@ -488,7 +398,7 @@ const apiData: ApiDataByEnv = {
               <p className="text-sm font-medium text-gray-500">Response Time (p99)</p>
               <p className="text-3xl font-bold text-gray-900">{selectedApi.responseTime}</p>
             </div>
-            
+           
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <AlertCircle className={`h-8 w-8 mb-2 ${selectedApi.errorRate < 2 ? 'text-green-600' : selectedApi.errorRate < 5 ? 'text-yellow-600' : 'text-red-600'}`} />
@@ -498,7 +408,7 @@ const apiData: ApiDataByEnv = {
                 {selectedApi.errorRate.toFixed(2)}%
               </p>
             </div>
-            
+           
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <CheckCircle className={`h-8 w-8 mb-2 ${selectedApi.successRate >= 98 ? 'text-green-600' : selectedApi.successRate >= 95 ? 'text-yellow-600' : 'text-red-600'}`} />
@@ -508,33 +418,9 @@ const apiData: ApiDataByEnv = {
                 {selectedApi.successRate.toFixed(2)}%
               </p>
             </div>
-
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <Server className="h-8 w-8 text-blue-600 mb-2" />
-              </div>
-              <p className="text-sm font-medium text-gray-500">Memory Utilization</p>
-              <p className="text-3xl font-bold text-gray-900">{parseFloat(selectedApi.memoryUtilization).toFixed(2)}%</p>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <Activity className="h-8 w-8 text-green-600 mb-2" />
-              </div>
-              <p className="text-sm font-medium text-gray-500">CPU Utilization</p>
-              <p className="text-3xl font-bold text-gray-900">{parseFloat(selectedApi.cpuUtilization).toFixed(2)}%</p>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <Activity className="h-8 w-8 text-purple-600 mb-2" />
-              </div>
-              <p className="text-sm font-medium text-gray-500">Throughput</p>
-              <p className="text-3xl font-bold text-gray-900">{(parseFloat(selectedApi.throughput) * 100).toFixed(2)} req/s</p>
-            </div>
           </div>
 
-         
+          {/* Additional Details */}
           <div className="bg-white shadow rounded-lg p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Additional Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -578,9 +464,9 @@ const apiData: ApiDataByEnv = {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Activity className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-semibold text-gray-900">ClaimApi Dashboard</h1>
+              <h1 className="text-xl font-semibold text-gray-900">Monitoring Dashboard</h1>
             </div>
-            
+           
             <div className="flex items-center space-x-4">
               {/* Auto Refresh Toggle */}
               <div className="flex items-center space-x-2">
@@ -617,26 +503,30 @@ const apiData: ApiDataByEnv = {
                 <button
                   onClick={() => setIsEnvDropdownOpen(!isEnvDropdownOpen)}
                   className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isLoadingEnvironments}
                 >
-                  Environment: {selectedEnv}
+                  {isLoadingEnvironments ? 'Loading...' : selectedEnv?.name || 'Select Environment'}
                   <ChevronDown className="ml-2 h-4 w-4" />
                 </button>
-                
-                {isEnvDropdownOpen && (
+               
+                {isEnvDropdownOpen && !isLoadingEnvironments && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
                     <div className="py-1">
-                      {(['QA', 'PROD'] as Environment[]).map((env: Environment) => (
+                      {environments.map((env: Environment) => (
                         <button
-                          key={env}
+                          key={env.envId}
                           onClick={() => {
                             setSelectedEnv(env);
                             setIsEnvDropdownOpen(false);
+                            // Clear current data when switching environments
+                            setApiData([]);
+                            setSearchQuery('');
                           }}
                           className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
-                            selectedEnv === env ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                            selectedEnv?.envId === env.envId ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                           }`}
                         >
-                          {env}
+                          {env.name}
                         </button>
                       ))}
                     </div>
@@ -662,9 +552,41 @@ const apiData: ApiDataByEnv = {
           )}
         </div>
 
-        {/* Search Bar with Button */}
+        {/* Search Bar with Time Filter Dropdown and Search Button */}
         <div className="mb-6">
           <div className="flex gap-2">
+            {/* Time Filter Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsTimeFilterDropdownOpen(!isTimeFilterDropdownOpen)}
+                className="flex items-center px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {timeFilterOptions.find(opt => opt.value === selectedTimeFilter)?.label}
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </button>
+             
+              {isTimeFilterDropdownOpen && (
+                <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border">
+                  <div className="py-1">
+                    <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                      Time Range
+                    </div>
+                    {timeFilterOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => handleTimeFilterSelect(option.value)}
+                        className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                          selectedTimeFilter === option.value ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="relative flex-1">
               <div className="absolute inset-y-0 start-0 flex items-center pl-3 pointer-events-none">
                 <Search className="w-5 h-5 text-gray-500" />
@@ -679,13 +601,23 @@ const apiData: ApiDataByEnv = {
                 className="block w-full p-3 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500"
                 autoComplete="off"
               />
+              {isSearching && (
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                </div>
+              )}
             </div>
+           
+            {/* Search Button */}
             <button
-              onClick={handleSearch}
-              className="px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              onClick={handleSearchButtonClick}
+              className="flex items-center px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              disabled={isSearching}
             >
+              <Search className="w-4 h-4 mr-2" />
               Search
             </button>
+           
             {searchQuery && (
               <button
                 onClick={handleClearSearch}
@@ -695,11 +627,16 @@ const apiData: ApiDataByEnv = {
               </button>
             )}
           </div>
-          {searchQuery && (
-            <div className="mt-2 text-sm text-gray-600">
-              <span className="font-medium">Showing {filteredData.length} of {currentData.length} APIs</span>
-            </div>
-          )}
+         
+          {/* Search Info */}
+          <div className="mt-2 flex justify-between items-center text-sm text-gray-600">
+            {searchQuery && (
+              <span className="font-medium">Showing {filteredData.length} of {apiData.length} APIs</span>
+            )}
+            <span className="text-gray-500">
+              Selected: {timeFilterOptions.find(opt => opt.value === selectedTimeFilter)?.label}
+            </span>
+          </div>
         </div>
 
         {/* Performance Metrics */}
@@ -713,7 +650,7 @@ const apiData: ApiDataByEnv = {
               <p className="text-sm font-medium text-gray-500">Total Entities</p>
               <p className="text-3xl font-bold text-gray-900">{totalEntities}</p>
             </div>
-            
+           
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <AlertCircle className="h-8 w-8 text-red-600 mb-2" />
@@ -721,7 +658,7 @@ const apiData: ApiDataByEnv = {
               <p className="text-sm font-medium text-gray-500">Entities with Errors</p>
               <p className="text-3xl font-bold text-gray-900">{entitiesWithErrors}</p>
             </div>
-            
+           
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <Activity className="h-8 w-8 text-green-600 mb-2" />
@@ -729,7 +666,7 @@ const apiData: ApiDataByEnv = {
               <p className="text-sm font-medium text-gray-500">Total Requests</p>
               <p className="text-3xl font-bold text-gray-900">{totalRequests.toLocaleString()}</p>
             </div>
-            
+           
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <CheckCircle className="h-8 w-8 text-orange-600 mb-2" />
@@ -748,7 +685,7 @@ const apiData: ApiDataByEnv = {
               <span className="text-sm text-gray-500">No APIs match your search criteria</span>
             )}
           </div>
-          
+         
           <div className="overflow-x-auto">
             {filteredData.length > 0 ? (
               <table className="min-w-full divide-y divide-gray-200">
@@ -760,7 +697,6 @@ const apiData: ApiDataByEnv = {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                   
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Request Volume
                     </th>
@@ -795,7 +731,6 @@ const apiData: ApiDataByEnv = {
                           {api.errorRate > 10 ? 'Not Running' : 'Running'}
                         </span>
                       </td>
-                     
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {api.requestVolume.toLocaleString()}
                       </td>
@@ -805,8 +740,8 @@ const apiData: ApiDataByEnv = {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={`font-medium ${
-                          api.errorRate > 10 ? 'text-red-600' : 
-                          api.errorRate > 5 ? 'text-yellow-600' : 
+                          api.errorRate > 10 ? 'text-red-600' :
+                          api.errorRate > 5 ? 'text-yellow-600' :
                           'text-green-600'
                         }`}>
                           {api.errorRate.toFixed(2)}%
@@ -823,8 +758,10 @@ const apiData: ApiDataByEnv = {
               <div className="p-6 text-center text-gray-500">
                 {searchQuery ? (
                   <p>No APIs match your search criteria. Try adjusting your search.</p>
+                ) : selectedEnv ? (
+                  <p>Enter search terms and click Search to load API data.</p>
                 ) : (
-                  <p>No APIs available for the selected environment.</p>
+                  <p>Please select an environment to begin.</p>
                 )}
               </div>
             )}
@@ -839,8 +776,8 @@ const apiData: ApiDataByEnv = {
     isMounted,
     searchQuery,
     filteredData,
-    currentData,
-    handleSearch,
+    apiData,
+    handleSearchButtonClick,
     handleClearSearch,
     handleSearchInputChange,
     handleKeyPress,
@@ -851,7 +788,14 @@ const apiData: ApiDataByEnv = {
     isEnvDropdownOpen,
     overallErrorRate,
     totalEntities,
-    totalRequests
+    totalRequests,
+    isTimeFilterDropdownOpen,
+    selectedTimeFilter,
+    timeFilterOptions,
+    handleTimeFilterSelect,
+    isSearching,
+    environments,
+    isLoadingEnvironments
   ]);
 
   // Render based on view mode
