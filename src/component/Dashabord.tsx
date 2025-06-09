@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronDown, Activity, AlertCircle, CheckCircle, Clock, Server, ArrowLeft, RotateCcw, Search, Loader2 } from 'lucide-react';
+import { ChevronDown, Activity, AlertCircle, CheckCircle, Clock, Server, ArrowLeft, RotateCcw, Search, Loader2, ExternalLink, Cpu, MemoryStick } from 'lucide-react';
 
 // Real axios import - make sure to install: npm install axios
 import axios from 'axios';
@@ -17,6 +17,12 @@ interface ApiData {
   successRate: number;
   deploymentType: string;
   version: string;
+  status: string;
+  memoryUtil: string;
+  cpuUtil: string;
+  throughput: string;
+  lastUpdateTime: number;
+  createTime: number;
 }
 
 interface Environment {
@@ -39,6 +45,9 @@ interface ApiEntity {
   lastUpdateTime: number;
   createTime: number;
 }
+
+type TimeFilter = '1h' | '2h' | '12h' | '24h';
+type ViewMode = 'dashboard' | 'details';
 
 // Development mode toggle - set to false for production
 const ENABLE_MOCK_MODE = false; // Set to true to use mock data during development
@@ -91,7 +100,7 @@ const getMockMetrics = (request: any) => ({
 
 // API Configuration - Update these values with your actual API details
 const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/v1/api',
+  BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8082/v1/api',
   HEADERS: {
     'Content-Type': 'application/json',
     'client_id': process.env.NEXT_PUBLIC_CLIENT_ID || 'your-client-id',
@@ -101,6 +110,34 @@ const API_CONFIG = {
     // 'X-API-Key': 'your-api-key'
   },
   TIMEOUT: 30000
+};
+
+// Splunk URL Generator
+const generateSplunkUrl = (apiName: string, environment: string): string => {
+  const baseUrl = "https://medica.splunkcloud.com/en-US/app/search/search?q=search%20index%3D";
+  
+  let indexSuffix = "";
+  switch (environment.toUpperCase()) {
+    case 'DEV':
+      indexSuffix = "d_mulesoft";
+      break;
+    case 'QA':
+      indexSuffix = "q_mulesoft";
+      break;
+    case 'STAGE':
+      indexSuffix = "s_mulesoft";
+      break;
+    case 'PROD':
+      indexSuffix = "p_mulesoft";
+      break;
+    default:
+      indexSuffix = "q_mulesoft";
+  }
+  
+  const applicationPart = "%20AND%20application%3D%22" + encodeURIComponent(apiName) + "%22";
+  const endPart = "%20AND%20level%3D*%20%20%7C%20table%20application%20%7C%20dedup%20application%20%7C%20sort%20application&display.page.search.mode=verbose&dispatch.sample_ratio=1&earliest=-30m%40m&latest=now&display.page.search.tab=statistics&display.general.type=statistics&workload_pool=standard_perf&sid=1749459758.941503";
+  
+  return baseUrl + indexSuffix + applicationPart + endPart;
 };
 
 // Create axios instance with proper configuration
@@ -218,7 +255,13 @@ const useApiMetrics = () => {
       errorRate,
       successRate,
       deploymentType: entity.deploymentType,
-      version: entity.version
+      version: entity.version,
+      status: entity.status,
+      memoryUtil: entity.memoryUtil,
+      cpuUtil: entity.cpuUtil,
+      throughput: entity.throughput,
+      lastUpdateTime: entity.lastUpdateTime,
+      createTime: entity.createTime
     };
   }, []);
 
@@ -482,7 +525,8 @@ const ApiTable: React.FC<{
   onApiClick: (api: ApiData) => void;
   searchQuery: string;
   totalApis: number;
-}> = ({ apis, onApiClick, searchQuery, totalApis }) => (
+  selectedEnv: Environment | null;
+}> = ({ apis, onApiClick, searchQuery, totalApis, selectedEnv }) => (
   <div className="bg-white shadow rounded-lg">
     <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
       <h3 className="text-lg font-medium text-gray-900">APIs List</h3>
@@ -516,16 +560,21 @@ const ApiTable: React.FC<{
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Deployment Type
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                View Logs
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {apis.map((api) => (
               <tr
                 key={api.id}
-                onClick={() => onApiClick(api)}
-                className="hover:bg-blue-50 cursor-pointer transition-colors border-l-4 border-transparent hover:border-blue-500"
+                className="hover:bg-blue-50 transition-colors border-l-4 border-transparent hover:border-blue-500"
               >
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td 
+                  className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                  onClick={() => onApiClick(api)}
+                >
                   <div className="flex items-center">
                     <div className="flex-shrink-0 h-2 w-2 bg-blue-600 rounded-full mr-3"></div>
                     <div className="text-sm font-medium text-gray-900">{api.name}</div>
@@ -533,9 +582,9 @@ const ApiTable: React.FC<{
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    api.errorRate > 10 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                    api.status === 'Running' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                   }`}>
-                    {api.errorRate > 10 ? 'Not Running' : 'Running'}
+                    {api.status}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -556,6 +605,18 @@ const ApiTable: React.FC<{
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {api.deploymentType}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <a
+                    href={generateSplunkUrl(api.name, selectedEnv?.name || 'QA')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full hover:bg-blue-200 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    View Logs
+                  </a>
                 </td>
               </tr>
             ))}
@@ -692,6 +753,15 @@ const ClaimApiDashboard: React.FC = () => {
               </div>
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-500">Environment: {selectedEnv?.name}</span>
+                <a
+                  href={generateSplunkUrl(selectedApi.name, selectedEnv?.name || 'QA')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-3 py-1 text-sm font-medium text-blue-600 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors"
+                >
+                  <ExternalLink className="h-4 w-4 mr-1" />
+                  View Logs in Splunk
+                </a>
               </div>
             </div>
           </div>
@@ -705,10 +775,16 @@ const ClaimApiDashboard: React.FC = () => {
                 {selectedApi.type}
               </span>
               <span className="text-sm text-gray-500">Version: {selectedApi.version}</span>
+              <span className="text-sm text-gray-500">Deployment: {selectedApi.deploymentType}</span>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                selectedApi.status === 'Running' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {selectedApi.status}
+              </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <div className="bg-white p-6 rounded-lg shadow">
               <Activity className="h-8 w-8 text-blue-600 mb-2" />
               <p className="text-sm font-medium text-gray-500">Request Volume</p>
@@ -735,6 +811,68 @@ const ClaimApiDashboard: React.FC = () => {
               <p className={`text-3xl font-bold ${selectedApi.successRate >= 98 ? 'text-green-600' : selectedApi.successRate >= 95 ? 'text-yellow-600' : 'text-red-600'}`}>
                 {selectedApi.successRate.toFixed(2)}%
               </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow">
+              <Cpu className="h-8 w-8 text-orange-600 mb-2" />
+              <p className="text-sm font-medium text-gray-500">CPU Utilization</p>
+              <p className="text-3xl font-bold text-gray-900">{selectedApi.cpuUtil}</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow">
+              <MemoryStick className="h-8 w-8 text-indigo-600 mb-2" />
+              <p className="text-sm font-medium text-gray-500">Memory Utilization</p>
+              <p className="text-3xl font-bold text-gray-900">{selectedApi.memoryUtil}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Performance Metrics</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-500">Throughput</span>
+                  <span className="text-sm font-bold text-gray-900">{selectedApi.throughput}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-500">Last Updated</span>
+                  <span className="text-sm text-gray-900">
+                    {new Date(selectedApi.lastUpdateTime).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-500">Created</span>
+                  <span className="text-sm text-gray-900">
+                    {new Date(selectedApi.createTime).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">System Information</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-500">Status</span>
+                  <span className={`text-sm font-bold ${
+                    selectedApi.status === 'Running' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {selectedApi.status}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-500">Deployment Type</span>
+                  <span className="text-sm text-gray-900">{selectedApi.deploymentType}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-500">Version</span>
+                  <span className="text-sm text-gray-900">{selectedApi.version}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-500">Environment</span>
+                  <span className="text-sm text-gray-900">{selectedEnv?.name}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -906,6 +1044,7 @@ const ClaimApiDashboard: React.FC = () => {
           onApiClick={handleApiClick}
           searchQuery={searchQuery}
           totalApis={apiData.length}
+          selectedEnv={selectedEnv}
         />
       </div>
     </div>
