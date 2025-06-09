@@ -8,3 +8,13 @@ Response Time (p99)
 
 success rate _> %
 need to add CPU utilization memory utilization
+
+
+A= "https://medica.splunkcloud.com/en-US/app/search/search?q=search%20index%3D"
+B = if Dev then d_mulesoft if QA then q_mulesoft if Stage  then s_mulesoft If Prod then p_mulesoft
+C = "%20AND%20application%3D%22"
+D = Application_name included double quotes
+E ="%22%20AND%20level%3D*%20%20%7C%20table%20application%20%7C%20dedup%20application%20%7C%20sort%20application&display.page.search.mode=verbose&dispatch.sample_ratio=1&earliest=-30m%40m&latest=now&display.page.search.tab=statistics&display.general.type=statistics&workload_pool=standard_perf&sid=1749459758.941503"
+
+
+https://medica.splunkcloud.com/en-US/app/search/search?q=search%20index%3Dq_mulesoft%20AND%20application%3D%22exp-enhancedclaimstatusinquiry-api%22%20AND%20level%3D*%20%20%7C%20table%20application%20%7C%20dedup%20application%20%7C%20sort%20application&display.page.search.mode=verbose&dispatch.sample_ratio=1&earliest=-30m%40m&latest=now&display.page.search.tab=statistics&display.general.type=statistics&workload_pool=standard_perf&sid=1749459758.941503
