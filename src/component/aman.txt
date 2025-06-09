@@ -1,0 +1,10 @@
+api status in prod 
+mapped splunk  link for that contains error 
+env - 12hrs 
+
+Response Time (p99)
+
+55174.00__> ms 
+
+success rate _> %
+need to add CPU utilization memory utilization
